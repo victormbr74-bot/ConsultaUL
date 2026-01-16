@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Consulta Lotericas Migradas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Consulta de Lotericas</h1>
+      <p class="sub">Base local (JSON) gerada a partir da planilha. Consulta rápida estilo “CONSULTA” e “MASCARAS ABERTURA”.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="search-row">
+        <label class="label" for="q">Buscar por <b>Código UL</b>, <b>CCTO</b> ou <b>Nome</b></label>
+        <div class="search-controls">
+          <input id="q" type="text" placeholder="Ex: 06-008197-0 ou CRPN5176950 ou CONSORTE" autocomplete="off" />
+          <button id="btnBuscar">Buscar</button>
+          <button id="btnLimpar" class="ghost">Limpar</button>
+        </div>
+        <div id="hint" class="hint">Dica: cole o código completo (ex: <code>19-006776-4</code>). Para nome, digite algumas letras.</div>
+      </div>
+
+      <div id="results" class="results"></div>
+    </section>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" data-tab="consulta">Consulta</button>
+        <button class="tab" data-tab="mascara">Máscara</button>
+      </div>
+
+      <div id="view-consulta" class="view">
+        <div class="grid">
+          <div class="panel">
+            <h2>Dados da Loterica</h2>
+            <div class="kv" id="kv-loterica"></div>
+          </div>
+          <div class="panel">
+            <h2>Link Principal</h2>
+            <div class="kv" id="kv-principal"></div>
+          </div>
+          <div class="panel">
+            <h2>Backup</h2>
+            <div class="kv" id="kv-backup"></div>
+          </div>
+          <div class="panel">
+            <h2>Comandos (atalhos)</h2>
+            <div class="cmds" id="cmds"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-mascara" class="view hidden">
+        <div class="mask-actions">
+          <button id="btnCopiarMascara">Copiar máscara</button>
+          <span id="copystatus" class="hint"></span>
+        </div>
+        <textarea id="maskText" spellcheck="false"></textarea>
+        <p class="hint">Essa máscara é gerada automaticamente com base no registro selecionado. Ajuste “Problema”, “Defeito reclamado”, “Troubleshooting” e horários conforme o caso real.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Como rodar</h2>
+      <ol>
+        <li>Coloque esta pasta em qualquer lugar.</li>
+        <li>Abra um terminal dentro dela e rode: <code>python -m http.server 8000</code></li>
+        <li>Acesse no navegador: <code>http://localhost:8000</code></li>
+      </ol>
+      <p class="hint">Abrir o <code>index.html</code> direto (duplo clique) pode bloquear o <code>fetch()</code> do <code>data.json</code> por segurança do navegador.</p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Gerado automaticamente a partir da planilha em 13/01 (arquivo fornecido). Sem servidor e sem banco de dados: só HTML+JS.</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
