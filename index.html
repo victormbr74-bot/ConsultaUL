@@ -163,6 +163,9 @@
         <div class="panel">
           <h2>Importar base (XLSX)</h2>
           <p class="hint">Selecione o XLSX e importe. Os dados ficam salvos no navegador (IndexedDB).</p>
+          <label class="label" for="xlsxUrl">URL do XLSX (site)</label>
+          <input id="xlsxUrl" type="text" value="./base.xlsx" />
+          <button id="btnUpdateFromSite" class="ghost">Atualizar base (XLSX do site)</button>
           <input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           <div class="actions">
             <button id="btnImportXlsx">Importar XLSX</button>

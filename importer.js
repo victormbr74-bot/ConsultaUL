@@ -125,9 +125,7 @@ function parseTemplates(rows){
   return templates;
 }
 
-async function importXlsxFile(file){
-  const data = await file.arrayBuffer();
-  const wb = XLSX.read(data, {type:'array'});
+function importXlsxWorkbook(wb, fileName){
   let sheetMacro = findSheet(wb, SHEET_MACRO);
   if(!sheetMacro) sheetMacro = findSheetWithCodUl(wb);
   if(!sheetMacro) sheetMacro = wb.SheetNames[0] || null;
@@ -135,7 +133,7 @@ async function importXlsxFile(file){
   const sheetMascaras = findSheet(wb, SHEET_MASCARAS);
 
   const report = {
-    fileName: file.name,
+    fileName: fileName || 'XLSX',
     importedAt: new Date().toISOString(),
     sheetsFound: [sheetMacro, sheetConsulta, sheetMascaras].filter(Boolean),
     primarySheet: sheetMacro || '',
@@ -200,4 +198,15 @@ async function importXlsxFile(file){
 
   const records = Array.from(map.values());
   return {records, report, templates};
+}
+
+async function importXlsxFile(file){
+  const data = await file.arrayBuffer();
+  const wb = XLSX.read(data, {type:'array'});
+  return importXlsxWorkbook(wb, file.name);
+}
+
+function importXlsxArrayBuffer(buffer, name){
+  const wb = XLSX.read(buffer, {type:'array'});
+  return importXlsxWorkbook(wb, name);
 }

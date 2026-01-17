@@ -21,6 +21,7 @@ select#maskTemplate{width:100%;padding:10px 12px;border-radius:12px;border:1px s
 select#encFalha,select#encCausa{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none}
 input#encContatoNome,input#encContatoTel,input#encQueda,input#encTempo,input#encNormalizacao{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none}
 select#abDefeito{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none}
+input#xlsxUrl{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none;margin-bottom:8px}
 input[type="file"]{display:block;margin:6px 0 10px;color:var(--muted)}
 button{padding:11px 12px;border-radius:12px;border:1px solid rgba(96,165,250,.35);background:rgba(96,165,250,.18);color:var(--text);cursor:pointer}
 button:hover{background:rgba(96,165,250,.24)}

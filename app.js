@@ -71,6 +71,23 @@ function formatDateTimeMinutes(date){
   return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
 }
 
+function resolveSameOriginUrl(input){
+  const raw = String(input || '').trim() || './base.xlsx';
+  let urlObj;
+  try{
+    urlObj = new URL(raw, window.location.href);
+  } catch {
+    return {error: 'URL invalida.', url: null};
+  }
+  if(urlObj.origin !== window.location.origin){
+    return {error: 'URL externa bloqueada. Use caminho relativo na raiz do site.', url: null};
+  }
+  const base = urlObj.pathname + urlObj.search;
+  const sep = base.includes('?') ? '&' : '?';
+  const finalUrl = `${base}${sep}v=${Date.now()}`;
+  return {error: null, url: finalUrl, display: raw};
+}
+
 function uniqueList(list){
   const seen = new Set();
   const out = [];
@@ -298,6 +315,17 @@ function refreshEncerramentoMinimal(){
   saveEncerramentoState();
 }
 
+async function applyPostImport(prevCode){
+  await loadFromIndexedDB();
+  if(prevCode && INDEX && INDEX.mapByCodUl.has(prevCode)){
+    CURRENT = INDEX.mapByCodUl.get(prevCode);
+    renderConsulta(CURRENT);
+  } else {
+    CURRENT = null;
+    renderConsulta(null);
+  }
+}
+
 function activateTab(tab){
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   for(const v of VIEWS){
@@ -377,44 +405,75 @@ function renderConsulta(r){
   };
 
   putKV('#kv-loterica', [
-    ['Codigo UL', val('codigo_ul')],
-    ['Nome', val('nome_ul')],
-    ['Status', val('status')],
+    ['CD UL OU CCTO', val('cd_ul_ou_ccto')],
+    ['CODIGO DA UL', val('codigo_ul')],
+    ['NOME UL', val('nome_ul')],
+    ['STATUS', val('status')],
+    ['CONTATO', val('contato')],
     ['UF', val('uf')],
-    ['Contato', val('contato')],
-    ['Endereco', val('endereco')],
-    ['Homologado', val('homolo')],
-    ['Migracao', val('migracao')],
-    ['Meraki', val('meraki')],
-    ['Owner', val('owner')],
-    ['Tipo', val('tipo_ul')],
+    ['ENDERECO', val('endereco')],
+    ['HOMOLO', val('homolo')],
+    ['MIGRACAO', val('migracao')],
+    ['MERAKI', val('meraki')],
+    ['OWNER', val('owner')],
     ['TFL', val('tfl')],
+    ['TIPO DE UL', val('tipo_ul')],
   ]);
 
   putKV('#kv-principal', [
-    ['Designacao/CCTO', val('designacao_atual_antiga')],
-    ['IP NAT', ipNat],
+    ['DESIGNACAO ATUAL/ANTIGA', val('designacao_atual_antiga')],
+    ['DESIGNACAO NOVA', val('designacao_nova')],
+    ['IP de NAT', ipNat],
     ['IP WAN', val('ip_wan')],
-    ['Loopback WAN', loopP],
-    ['Loopback switch', val('loopback_switch')],
+    ['LOOPBACK PRIMARIO', loopP],
+    ['PERIMETRO', val('perimetro')],
+    ['SWITCH', val('switch')],
+    ['EMPRESA OEMP', val('empresa_oemp')],
+    ['CIRCUITO OEMP', val('circuito_oemp')],
   ]);
 
   putKV('#kv-backup', [
-    ['Empresa OEMP', val('empresa_oemp')],
-    ['Circuito/CCTO OEMP', val('circuito_oemp')],
-    ['Loopback backup', loopB],
-    ['Operadora backup', val('operadora_4g')],
-    ['Responsavel backup', val('responsavel_backup')],
+    ['RESPONSAVEL BACKUP', val('responsavel_backup')],
+    ['TECNOLOGIA', val('tecnologia_backup')],
+    ['OPERADORA 4G', val('operadora_4g')],
+    ['LOOPBACK BACKUP', loopB],
+    ['REDE LAN', val('rede_lan')],
   ]);
 
   const cmds = $('#cmds');
   cmds.innerHTML='';
-  const cmdList=[];
-  if(loopP && loopP !== '—') cmdList.push(['SSH principal', `ssh ${loopP}`]);
-  if(loopB && loopB !== '—') cmdList.push(['SSH backup', `ssh ${loopB}`]);
-  if(loopP && loopP !== '—') cmdList.push(['Ping principal (MTU)', `ping ${loopP} df-bit size 1472 source Gi0/0/1.1090 repeat 10`]);
-  if(loopB && loopB !== '—') cmdList.push(['Ping backup', `ping ${loopB} df-bit size 1300 source Gi0/0/1.1090 repeat 10`]);
-  if(ipNat && ipNat !== '—') cmdList.push(['Acesso via NAT', `ssh SEU_USUARIO@${ipNat}`]);
+  const isMissing = (v)=> !v || v === '—';
+  const acessoPrim = !isMissing(loopP) ? `ssh ${loopP}` : '—';
+  const acessoSec = !isMissing(loopB) ? `ssh ${loopB}` : '—';
+  const pingPrim = !isMissing(loopP) ? `ping ${loopP} df-bit size 1472 source Gi0/0/1.1090 repeat 10` : '—';
+  const pingSec = !isMissing(loopB) ? `ping ${loopB} df-bit size 1300 source Gi0/0/1.1090 repeat 10` : '—';
+  const tempoPrim = !isMissing(loopP) ? `sh ip route | inc ${loopP}/32` : '—';
+  const tempoSec = !isMissing(loopB) ? `sh ip route | inc ${loopB}/32` : '—';
+  const acessoNat = !isMissing(ipNat) ? `ssh SEU_USUARIO@${ipNat}` : '—';
+
+  const scriptLines = [];
+  if(!isMissing(loopP) || !isMissing(loopB)){
+    scriptLines.push('tclsh', '', 'foreach add {');
+    if(!isMissing(loopP)){
+      scriptLines.push(`"${loopP} df-bit size 1472 source Gi0/0/1.1090 repeat 5"`);
+    }
+    if(!isMissing(loopB)){
+      scriptLines.push(`"${loopB} df-bit size 1472 source Gi0/0/1.1090 repeat 5"`);
+    }
+    scriptLines.push('} { ping $add }');
+  }
+  const scriptText = scriptLines.length ? scriptLines.join('\n') : '—';
+
+  const cmdList = [
+    ['ACESSO PRIMARIO', acessoPrim],
+    ['ACESSO SECUNDARIO', acessoSec],
+    ['PING PRIMARIO', pingPrim],
+    ['TEMPO ROTEAMENTO PRIMARIO', tempoPrim],
+    ['PING SECUNDARIO', pingSec],
+    ['TEMPO ROTEAMENTO SECUNDARIO', tempoSec],
+    ['ACESSO VIA NAT', acessoNat],
+    ['SCRIPT TCLSH', scriptText],
+  ];
 
   for(const [label,text] of cmdList){
     const c=el('div','cmd');
@@ -536,6 +595,7 @@ async function loadFromIndexedDB(){
     const lines = [
       `Arquivo: ${importInfo.fileName}`,
       `Importado em: ${importInfo.importedAt}`,
+      `Fonte: ${importInfo.source === 'site' ? 'XLSX do site' : 'Upload local'}`,
       `Abas: ${importInfo.sheetsFound.join(', ') || '-'}`,
       `Registros: ${importInfo.validRecords}`,
       `Ignorados: ${importInfo.ignored}`,
@@ -705,12 +765,14 @@ async function wireUI(){
     }
     setStatus('#importStatus', ['Lendo arquivo...']);
     try{
+      const prevCode = CURRENT ? getRecordCode(CURRENT) : null;
       const {records, report} = await importXlsxFile(file);
+      report.source = 'upload';
       setStatus('#importStatus', ['Salvando...']);
       await clearRecords(DB);
       await putManyRecords(DB, records);
       await setMeta(DB, META_IMPORT, report);
-      await loadFromIndexedDB();
+      await applyPostImport(prevCode);
 
       const lines = [
         `Total de linhas: ${report.totalLines}`,
@@ -725,6 +787,50 @@ async function wireUI(){
     } catch (err){
       console.error(err);
       setStatus('#importStatus', ['Erro ao importar o XLSX. Verifique o arquivo.']);
+    }
+  });
+
+  $('#btnUpdateFromSite').addEventListener('click', async ()=>{
+    const {error, url, display} = resolveSameOriginUrl($('#xlsxUrl').value);
+    if(error){
+      setStatus('#importStatus', [error]);
+      return;
+    }
+    setStatus('#importStatus', ['Baixando XLSX...']);
+    try{
+      const res = await fetch(url, {cache:'no-store'});
+      if(!res.ok){
+        if(res.status === 404){
+          setStatus('#importStatus', ['Arquivo base.xlsx nao encontrado na raiz do site. Publique o arquivo no repositorio.']);
+        } else {
+          setStatus('#importStatus', [`Falha ao baixar XLSX (HTTP ${res.status}).`]);
+        }
+        return;
+      }
+      const buffer = await res.arrayBuffer();
+      const prevCode = CURRENT ? getRecordCode(CURRENT) : null;
+      const {records, report} = importXlsxArrayBuffer(buffer, display);
+      report.source = 'site';
+      report.importedAt = new Date().toISOString();
+      setStatus('#importStatus', ['Salvando...']);
+      await clearRecords(DB);
+      await putManyRecords(DB, records);
+      await setMeta(DB, META_IMPORT, report);
+      await applyPostImport(prevCode);
+      const lines = [
+        `Total de linhas: ${report.totalLines}`,
+        `Registros validos: ${report.validRecords}`,
+        `Ignorados (sem cod_ul): ${report.ignored}`,
+        `Aba principal: ${report.primarySheet || '-'}`,
+        `Abas encontradas: ${report.sheetsFound.join(', ') || '-'}`,
+        `Campos finais: ${report.fields.join(', ') || '-'}`,
+        `Conflitos: ${report.conflicts}`,
+        `Ultima atualizacao: ${report.importedAt} (XLSX do site)`,
+      ];
+      setStatus('#importStatus', lines);
+    } catch (err){
+      console.error(err);
+      setStatus('#importStatus', ['Erro ao baixar ou importar o XLSX do site.']);
     }
   });
 
