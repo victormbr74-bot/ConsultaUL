@@ -6,6 +6,8 @@ let DB = null;
 let INDEX = null;
 let CURRENT = null;
 let TEMPLATES = [];
+let CUSTOM_CAUSES = [];
+let ABERTURA_EDITED = false;
 
 const VIEWS = ['consulta','mascara','importar','loterica'];
 const META_IMPORT = 'import_info';
@@ -14,6 +16,13 @@ const META_TEMPLATES = 'templates';
 const STORAGE_LAST_QUERY = 'last_query';
 const STORAGE_LAST_TEMPLATE = 'last_template';
 const STORAGE_LAST_OBS = 'last_obs';
+const STORAGE_LAST_FAIL = 'last_fail';
+const STORAGE_LAST_CAUSE = 'last_cause';
+const STORAGE_LAST_CONTACT_NAME = 'last_contact_name';
+const STORAGE_LAST_CONTACT_PHONE = 'last_contact_phone';
+const STORAGE_ABERTURA_LAST = 'abertura_last';
+const META_CUSTOM_CAUSES = 'custom_causes';
+const META_ABERTURA_LAST = 'abertura_padrao_last';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls) => { const n=document.createElement(tag); if(cls) n.className=cls; return n; };
@@ -45,6 +54,206 @@ function setResultsHint(text){
 
 function setSearchEnabled(enabled){
   $('#btnBuscar').disabled = !enabled;
+}
+
+function uniqueList(list){
+  const seen = new Set();
+  const out = [];
+  for(const item of list){
+    const v = String(item);
+    if(seen.has(v)) continue;
+    seen.add(v);
+    out.push(item);
+  }
+  return out;
+}
+
+function getAllCauses(){
+  return uniqueList([...(ENCERRAMENTO_CAUSES || []), ...(CUSTOM_CAUSES || [])]);
+}
+
+function populateEncerramentoOptions(){
+  const falhaSel = $('#encFalha');
+  falhaSel.innerHTML = '';
+  for(const f of ENCERRAMENTO_FAILS || []){
+    const opt = el('option');
+    opt.value = f;
+    opt.textContent = f;
+    falhaSel.appendChild(opt);
+  }
+
+  const causaSel = $('#encCausa');
+  causaSel.innerHTML = '';
+  for(const c of getAllCauses()){
+    const opt = el('option');
+    opt.value = c;
+    opt.textContent = c;
+    causaSel.appendChild(opt);
+  }
+
+  const lastFail = localStorage.getItem(STORAGE_LAST_FAIL);
+  if(lastFail && Array.from(falhaSel.options).some(o=>o.value===lastFail)) falhaSel.value = lastFail;
+  const lastCause = localStorage.getItem(STORAGE_LAST_CAUSE);
+  if(lastCause && Array.from(causaSel.options).some(o=>o.value===lastCause)) causaSel.value = lastCause;
+}
+
+function getEncerramentoPayload(){
+  const falha = $('#encFalha').value || '';
+  const dataHora = parseEncerramentoDate($('#encDataHora').value, $('#encSegundos').value);
+  const causa = $('#encCausa').value || '';
+  const contatoNome = $('#encContatoNome').value || '';
+  const contatoTel = $('#encContatoTel').value || '';
+  return {falha, dataHora, causa, contatoNome, contatoTel};
+}
+
+function refreshEncerramento(){
+  const payload = getEncerramentoPayload();
+  $('#maskText').value = buildEncerramentoText(payload);
+  localStorage.setItem(STORAGE_LAST_FAIL, payload.falha);
+  localStorage.setItem(STORAGE_LAST_CAUSE, payload.causa);
+  localStorage.setItem(STORAGE_LAST_CONTACT_NAME, payload.contatoNome);
+  localStorage.setItem(STORAGE_LAST_CONTACT_PHONE, payload.contatoTel);
+}
+
+function setEncerramentoVisible(visible){
+  $('#encerramentoForm').classList.toggle('hidden', !visible);
+  if(visible) refreshEncerramento();
+}
+
+function setAberturaVisible(visible){
+  $('#aberturaPadraoForm').classList.toggle('hidden', !visible);
+  if(visible){
+    prefillAberturaFromRecord(CURRENT);
+    if(!$('#abReclamacao').value){
+      ABERTURA_EDITED = false;
+      ensureAberturaReclamacaoDefault(true);
+    }
+    refreshAbertura();
+  }
+}
+
+function getAberturaPayload(){
+  return {
+    designacao: $('#abDesignacao').value || '',
+    cod_ul: $('#abCodUl').value || '',
+    cliente: $('#abCliente').value || '',
+    protocolo_oi: $('#abProtocoloOi').value || '',
+    tipo_solicitacao: $('#abTipoSolic').value || '',
+    provedor: $('#abProvedor').value || '',
+    reincidente: $('#abReincidente').value || '',
+    ja_escalonado: $('#abEscalonado').value || '',
+    data_hora_queda: formatAberturaDate($('#abDataHoraQueda').value),
+    realizado_ts: $('#abTsCliente').value || '',
+    defeito_reclamado: $('#abDefeito').value || '',
+    horario_funcionamento: $('#abHorarioFunc').value || '',
+    contato_local: $('#abContatoLocal').value || '',
+    contato_validacao: $('#abContatoValidacao').value || '',
+    reclamacao_inicial: $('#abReclamacao').value || '',
+  };
+}
+
+function saveAberturaState(payload){
+  localStorage.setItem(STORAGE_ABERTURA_LAST, JSON.stringify(payload));
+  setMeta(DB, META_ABERTURA_LAST, payload);
+}
+
+function loadAberturaState(){
+  const raw = localStorage.getItem(STORAGE_ABERTURA_LAST);
+  if(raw){
+    try{ return JSON.parse(raw); } catch { return null; }
+  }
+  return null;
+}
+
+function applyAberturaState(state){
+  if(!state) return;
+  $('#abDesignacao').value = state.designacao || '';
+  $('#abCodUl').value = state.cod_ul || '';
+  $('#abCliente').value = state.cliente || '';
+  $('#abProtocoloOi').value = state.protocolo_oi || '';
+  $('#abTipoSolic').value = state.tipo_solicitacao || 'ABERTURA';
+  $('#abProvedor').value = state.provedor || '';
+  $('#abReincidente').value = state.reincidente || 'NAO';
+  $('#abEscalonado').value = state.ja_escalonado || '';
+  $('#abDataHoraQueda').value = state.data_hora_queda_raw || '';
+  $('#abTsCliente').value = state.realizado_ts || 'NAO';
+  $('#abDefeito').value = state.defeito_reclamado || '';
+  $('#abHorarioFunc').value = state.horario_funcionamento || '';
+  $('#abContatoLocal').value = state.contato_local || '';
+  $('#abContatoValidacao').value = state.contato_validacao || '';
+  $('#abReclamacao').value = state.reclamacao_inicial || '';
+  const padrao = getReclamacaoPadrao($('#abDefeito').value);
+  ABERTURA_EDITED = !!($('#abReclamacao').value && $('#abReclamacao').value !== padrao);
+}
+
+function refreshAbertura(){
+  const payload = getAberturaPayload();
+  $('#maskText').value = buildAberturaPadraoText(payload);
+  saveAberturaState({
+    ...payload,
+    data_hora_queda_raw: $('#abDataHoraQueda').value || '',
+  });
+}
+
+function populateAberturaDefeitos(){
+  const sel = $('#abDefeito');
+  sel.innerHTML = '';
+  for(const d of ABERTURA_DEFEITOS || []){
+    const opt = el('option');
+    opt.value = d;
+    opt.textContent = d;
+    sel.appendChild(opt);
+  }
+  if(!sel.value && sel.options.length) sel.value = sel.options[0].value;
+}
+
+function ensureAberturaReclamacaoDefault(force){
+  const defeito = $('#abDefeito').value;
+  const padrao = getReclamacaoPadrao(defeito);
+  if(force || !ABERTURA_EDITED){
+    $('#abReclamacao').value = padrao;
+    ABERTURA_EDITED = false;
+  }
+}
+
+function prefillAberturaFromRecord(record){
+  if(!record) return;
+  const setIfEmpty = (sel, val)=>{
+    const node = $(sel);
+    if(node && !node.value && val) node.value = val;
+  };
+  const designacao = pickField(record, ['designacao','ccto_oi','CCTO OI','BASE UN','Ponto Logico / Designacao','Ponto Lógico / \nDesignação']);
+  const codUl = getRecordCode(record);
+  const cliente = pickField(record, ['cliente','razao_social','nome_loterica','NOME DA LOTERICA','NOME UL','empresa_oemp','EMPRESA OEMP']);
+  const provedor = pickField(record, ['provedor','operadora','OPERADORA','OPERADORA BACKUP','EMPRESA OEMP']);
+  const contato = pickField(record, ['contato','CONTATO']);
+  setIfEmpty('#abDesignacao', designacao);
+  setIfEmpty('#abCodUl', codUl);
+  setIfEmpty('#abCliente', cliente);
+  setIfEmpty('#abProvedor', provedor);
+  setIfEmpty('#abContatoLocal', contato);
+  setIfEmpty('#abContatoValidacao', contato);
+  if(!$('#abDataHoraQueda').value){
+    const now = new Date();
+    const pad = (x)=> String(x).padStart(2,'0');
+    $('#abDataHoraQueda').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+  if(!$('#abTipoSolic').value) $('#abTipoSolic').value = 'ABERTURA';
+  refreshAbertura();
+}
+
+function resetEncerramentoForm(){
+  $('#encFalha').value = '';
+  $('#encDataHora').value = '';
+  $('#encSegundos').value = '';
+  $('#encCausa').value = '';
+  $('#encContatoNome').value = '';
+  $('#encContatoTel').value = '';
+  ['#maskText'].forEach(sel=>$(sel).value='');
+  localStorage.removeItem(STORAGE_LAST_FAIL);
+  localStorage.removeItem(STORAGE_LAST_CAUSE);
+  localStorage.removeItem(STORAGE_LAST_CONTACT_NAME);
+  localStorage.removeItem(STORAGE_LAST_CONTACT_PHONE);
 }
 
 function activateTab(tab){
@@ -212,6 +421,26 @@ function buildMaskData(r){
 
 function refreshMask(){
   const tplId = $('#maskTemplate').value;
+  if(tplId === 'encerramento'){
+    setEncerramentoVisible(true);
+    setAberturaVisible(false);
+    $('#maskTemplateRow').classList.add('hidden');
+    $('#maskObsRow').classList.add('hidden');
+    localStorage.setItem(STORAGE_LAST_TEMPLATE, tplId);
+    return;
+  }
+  if(tplId === 'abertura_padrao'){
+    setEncerramentoVisible(false);
+    setAberturaVisible(true);
+    $('#maskTemplateRow').classList.add('hidden');
+    $('#maskObsRow').classList.add('hidden');
+    localStorage.setItem(STORAGE_LAST_TEMPLATE, tplId);
+    return;
+  }
+  setEncerramentoVisible(false);
+  setAberturaVisible(false);
+  $('#maskTemplateRow').classList.remove('hidden');
+  $('#maskObsRow').classList.remove('hidden');
   const tpl = TEMPLATES.find(t=>t.id===tplId) || TEMPLATES[0];
   const obs = $('#maskObs').value || '';
   localStorage.setItem(STORAGE_LAST_TEMPLATE, tplId);
@@ -232,9 +461,19 @@ function setTemplatesList(templates){
     opt.textContent = t.name;
     sel.appendChild(opt);
   }
+  const encOpt = el('option');
+  encOpt.value = 'encerramento';
+  encOpt.textContent = 'Encerramento';
+  sel.appendChild(encOpt);
+  const abOpt = el('option');
+  abOpt.value = 'abertura_padrao';
+  abOpt.textContent = 'MÁSCARA DE ABERTURA (PADRÃO IMAGEM)';
+  sel.appendChild(abOpt);
   const last = localStorage.getItem(STORAGE_LAST_TEMPLATE);
   if(last && TEMPLATES.some(t=>t.id===last)) sel.value = last;
-  if(CURRENT) refreshMask();
+  if(last === 'encerramento') sel.value = 'encerramento';
+  if(last === 'abertura_padrao') sel.value = 'abertura_padrao';
+  refreshMask();
 }
 
 function selectRecord(code){
@@ -243,6 +482,7 @@ function selectRecord(code){
   CURRENT = r;
   renderConsulta(r);
   refreshMask();
+  prefillAberturaFromRecord(r);
   $('#results').innerHTML = `<div class="hint">Registro selecionado: <code>${code}</code></div>`;
   activateTab('consulta');
 }
@@ -266,6 +506,9 @@ async function loadFromIndexedDB(){
   const records = await getAllRecords(DB);
   const templates = await getMeta(DB, META_TEMPLATES);
   const importInfo = await getMeta(DB, META_IMPORT);
+  const customCauses = await getMeta(DB, META_CUSTOM_CAUSES);
+  const aberturaState = await getMeta(DB, META_ABERTURA_LAST);
+  CUSTOM_CAUSES = Array.isArray(customCauses) ? customCauses : [];
 
   if(records.length === 0){
     INDEX = null;
@@ -280,6 +523,16 @@ async function loadFromIndexedDB(){
   setTemplatesList(templates);
   const obs = localStorage.getItem(STORAGE_LAST_OBS);
   if(obs) $('#maskObs').value = obs;
+  populateEncerramentoOptions();
+  populateAberturaDefeitos();
+  const lastName = localStorage.getItem(STORAGE_LAST_CONTACT_NAME);
+  const lastTel = localStorage.getItem(STORAGE_LAST_CONTACT_PHONE);
+  if(lastName) $('#encContatoNome').value = lastName;
+  if(lastTel) $('#encContatoTel').value = lastTel;
+  if(aberturaState) applyAberturaState(aberturaState);
+  const localAbertura = loadAberturaState();
+  if(!aberturaState && localAbertura) applyAberturaState(localAbertura);
+  if(!$('#abReclamacao').value) ensureAberturaReclamacaoDefault(true);
 
   ['#kv-loterica','#kv-principal','#kv-backup','#cmds'].forEach(sel=>$(sel).innerHTML='');
   $('#maskText').value = '';
@@ -326,6 +579,58 @@ async function wireUI(){
 
   $('#maskTemplate').addEventListener('change', refreshMask);
   $('#maskObs').addEventListener('input', refreshMask);
+  $('#encFalha').addEventListener('change', refreshEncerramento);
+  $('#encDataHora').addEventListener('change', refreshEncerramento);
+  $('#encSegundos').addEventListener('input', refreshEncerramento);
+  $('#encCausa').addEventListener('change', refreshEncerramento);
+  $('#encContatoNome').addEventListener('input', refreshEncerramento);
+  $('#encContatoTel').addEventListener('input', refreshEncerramento);
+
+  $('#abDesignacao').addEventListener('input', refreshAbertura);
+  $('#abCodUl').addEventListener('input', refreshAbertura);
+  $('#abCliente').addEventListener('input', refreshAbertura);
+  $('#abProtocoloOi').addEventListener('input', refreshAbertura);
+  $('#abTipoSolic').addEventListener('input', refreshAbertura);
+  $('#abProvedor').addEventListener('input', refreshAbertura);
+  $('#abReincidente').addEventListener('change', refreshAbertura);
+  $('#abEscalonado').addEventListener('input', refreshAbertura);
+  $('#abDataHoraQueda').addEventListener('change', refreshAbertura);
+  $('#abTsCliente').addEventListener('change', refreshAbertura);
+  $('#abDefeito').addEventListener('change', ()=>{
+    if(!ABERTURA_EDITED) ensureAberturaReclamacaoDefault(true);
+    refreshAbertura();
+  });
+  $('#abHorarioFunc').addEventListener('input', refreshAbertura);
+  $('#abContatoLocal').addEventListener('input', refreshAbertura);
+  $('#abContatoValidacao').addEventListener('input', refreshAbertura);
+  $('#abReclamacao').addEventListener('input', ()=>{
+    ABERTURA_EDITED = true;
+    refreshAbertura();
+  });
+  $('#btnRestaurarReclamacao').addEventListener('click', ()=>{
+    ensureAberturaReclamacaoDefault(true);
+    refreshAbertura();
+  });
+
+  $('#btnAddCausa').addEventListener('click', async ()=>{
+    const val = window.prompt('Digite a nova causa/solucao:');
+    if(!val) return;
+    const trimmed = val.trim();
+    if(!trimmed) return;
+    CUSTOM_CAUSES = uniqueList([...(CUSTOM_CAUSES || []), trimmed]);
+    await setMeta(DB, META_CUSTOM_CAUSES, CUSTOM_CAUSES);
+    populateEncerramentoOptions();
+    $('#encCausa').value = trimmed;
+    refreshEncerramento();
+  });
+
+  $('#btnLastContato').addEventListener('click', ()=>{
+    const lastName = localStorage.getItem(STORAGE_LAST_CONTACT_NAME) || '';
+    const lastTel = localStorage.getItem(STORAGE_LAST_CONTACT_PHONE) || '';
+    $('#encContatoNome').value = lastName;
+    $('#encContatoTel').value = lastTel;
+    refreshEncerramento();
+  });
 
   $('#btnCopiarMascara').addEventListener('click', async ()=>{
     const t = $('#maskText').value;
@@ -335,6 +640,57 @@ async function wireUI(){
       setTimeout(()=>$('#copystatus').textContent='',1200);
     } catch {
       $('#copystatus').textContent='Nao foi possivel copiar automaticamente. Selecione o texto e copie manualmente.';
+    }
+  });
+
+  $('#btnDownloadMascara').addEventListener('click', ()=>{
+    const text = $('#maskText').value;
+    if(!text) return;
+    const now = new Date();
+    const pad = (x)=> String(x).padStart(2,'0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const code = CURRENT ? (getRecordCode(CURRENT) || 'sem_codigo') : 'sem_codigo';
+    const tpl = $('#maskTemplate').value;
+    const name = tpl === 'encerramento'
+      ? 'encerramento'
+      : (tpl === 'abertura_padrao' ? 'abertura_padrao' : 'mascara');
+    const filename = `${name}_${code}_${stamp}.txt`;
+    const blob = new Blob([text], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  });
+
+  $('#btnLimparMascara').addEventListener('click', ()=>{
+    const tpl = $('#maskTemplate').value;
+    if(tpl === 'encerramento'){
+      resetEncerramentoForm();
+    } else if(tpl === 'abertura_padrao'){
+      $('#abDesignacao').value = '';
+      $('#abCodUl').value = '';
+      $('#abCliente').value = '';
+      $('#abProtocoloOi').value = '';
+      $('#abTipoSolic').value = 'ABERTURA';
+      $('#abProvedor').value = '';
+      $('#abReincidente').value = 'NAO';
+      $('#abEscalonado').value = '';
+      $('#abDataHoraQueda').value = '';
+      $('#abTsCliente').value = 'NAO';
+      $('#abHorarioFunc').value = '';
+      $('#abContatoLocal').value = '';
+      $('#abContatoValidacao').value = '';
+      ABERTURA_EDITED = false;
+      ensureAberturaReclamacaoDefault(true);
+      $('#maskText').value = '';
+      localStorage.removeItem(STORAGE_ABERTURA_LAST);
+      setMeta(DB, META_ABERTURA_LAST, null);
+    } else {
+      $('#maskObs').value = '';
+      $('#maskText').value = '';
+      localStorage.removeItem(STORAGE_LAST_OBS);
     }
   });
 
