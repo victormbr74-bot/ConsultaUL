@@ -125,6 +125,41 @@ function getReclamacaoPadrao(defeito){
   return ABERTURA_RECLAMACOES[defeito] || '';
 }
 
+function parseHoraMinutos(text){
+  const m = String(text || '').trim().match(/^(\d{1,3}):([0-5]\d)$/);
+  if(!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  return (h * 3600) + (min * 60);
+}
+
+function parseDatePt(text){
+  const s = String(text || '').trim();
+  if(!s) return null;
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if(!m) return null;
+  const dd = Number(m[1]);
+  const mm = Number(m[2]) - 1;
+  const yyyy = Number(m[3]);
+  const hh = Number(m[4]);
+  const mi = Number(m[5]);
+  const ss = m[6] ? Number(m[6]) : 0;
+  const d = new Date(yyyy, mm, dd, hh, mi, ss);
+  if(Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+function formatDateTimeSeconds(date){
+  const pad = (x)=> String(x).padStart(2,'0');
+  const dd = pad(date.getDate());
+  const mm = pad(date.getMonth()+1);
+  const yyyy = date.getFullYear();
+  const hh = pad(date.getHours());
+  const mi = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`;
+}
+
 function parseEncerramentoDate(value, secondsInput){
   const now = new Date();
   let date = now;
@@ -172,6 +207,22 @@ function buildAberturaPadraoText(payload){
     `HORARIO DE FUNCIONAMENTO: ${payload.horario_funcionamento || '-'}`,
     `CONTATO LOCAL: ${payload.contato_local || '-'}`,
     `CONTATO DE VALIDAÇÃO: ${payload.contato_validacao || '-'}`,
+    `RECLAMAÇÃO INICIAL: ${payload.reclamacao_inicial || '-'}`,
+  ].join('\n');
+}
+
+function buildAberturaMinimalText(payload){
+  return [
+    'MASCARA ATIVA',
+    `DESIGNAÇÃO: ${payload.designacao || '-'}`,
+    `COD. UL: ${payload.cod_ul || '-'}`,
+    `NOME UL: ${payload.nome_ul || '-'}`,
+    `ENDEREÇO: ${payload.endereco || '-'}`,
+    `CONTATO LOCAL: ${payload.contato_local || '-'}`,
+    `HORARIO DE FUNCIONAMENTO: ${payload.horario_funcionamento || '-'}`,
+    `OPERADORA: ${payload.operadora || '-'}`,
+    `DATA E HORA DA QUEDA: ${payload.data_hora_queda || '-'}`,
+    `DEFEITO RECLAMADO: ${payload.defeito_reclamado || '-'}`,
     `RECLAMAÇÃO INICIAL: ${payload.reclamacao_inicial || '-'}`,
   ].join('\n');
 }

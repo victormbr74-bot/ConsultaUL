@@ -39,7 +39,8 @@
       </div>
 
       <div id="view-consulta" class="view">
-        <div class="grid">
+        <div id="consulta-empty" class="hint">Faça uma consulta para ver os dados.</div>
+        <div id="consulta-layout" class="grid hidden">
           <div class="panel">
             <h2>Dados da Loterica</h2>
             <div class="kv" id="kv-loterica"></div>
@@ -61,31 +62,41 @@
 
       <div id="view-mascara" class="view hidden">
         <div class="panel">
-          <div id="maskTemplateRow">
-            <label class="label" for="maskTemplate">Template</label>
-            <select id="maskTemplate"></select>
+          <div class="subtabs">
+            <button class="subtab active" data-subtab="abertura">Abertura</button>
+            <button class="subtab" data-subtab="encerramento">Encerramento</button>
           </div>
-          <div id="maskObsRow">
-            <label class="label" for="maskObs">Observacao</label>
-            <textarea id="maskObs" spellcheck="false" placeholder="Opcional: observacoes especificas"></textarea>
+          <div id="maskWarning" class="hint">Faça uma consulta ou importe base para preencher automaticamente.</div>
+
+          <div id="view-mask-abertura" class="subview">
+            <div class="field-row">
+              <div class="grow">
+                <label class="label" for="abDefeito">Defeito reclamado</label>
+                <select id="abDefeito"></select>
+              </div>
+              <div class="compact">
+                <label class="label">&nbsp;</label>
+                <button id="btnRestaurarReclamacao" class="ghost">Restaurar padrão</button>
+              </div>
+            </div>
+            <div>
+              <label class="label" for="abReclamacao">Reclamação inicial</label>
+              <textarea id="abReclamacao" spellcheck="false"></textarea>
+            </div>
+            <div class="mask-actions">
+              <button id="btnCopiarAbertura">Copiar mascara</button>
+              <button id="btnDownloadAbertura" class="ghost">Baixar TXT</button>
+              <button id="btnLimparAbertura" class="ghost">Limpar</button>
+              <span id="abStatus" class="hint"></span>
+            </div>
           </div>
 
-          <div id="encerramentoForm" class="hidden">
+          <div id="view-mask-encerramento" class="subview hidden">
             <div class="field-row">
               <div>
                 <label class="label" for="encFalha">Falha</label>
                 <select id="encFalha"></select>
               </div>
-              <div>
-                <label class="label" for="encDataHora">Horário de normalização</label>
-                <input id="encDataHora" type="datetime-local" />
-              </div>
-              <div>
-                <label class="label" for="encSegundos">Segundos</label>
-                <input id="encSegundos" type="number" min="0" max="59" placeholder="00" />
-              </div>
-            </div>
-            <div class="field-row">
               <div class="grow">
                 <label class="label" for="encCausa">Causa/Solução</label>
                 <select id="encCausa"></select>
@@ -109,99 +120,42 @@
                 <button id="btnLastContato" class="ghost">Preencher com ultimo usado</button>
               </div>
             </div>
-          </div>
-
-          <div id="aberturaPadraoForm" class="hidden">
             <div class="field-row">
               <div>
-                <label class="label" for="abDesignacao">Designacao</label>
-                <input id="abDesignacao" type="text" />
-              </div>
-              <div>
-                <label class="label" for="abCodUl">Cod. UL</label>
-                <input id="abCodUl" type="text" />
-              </div>
-              <div>
-                <label class="label" for="abCliente">Cliente</label>
-                <input id="abCliente" type="text" />
-              </div>
-            </div>
-            <div class="field-row">
-              <div>
-                <label class="label" for="abProtocoloOi">Protocolo OI</label>
-                <input id="abProtocoloOi" type="text" />
-              </div>
-              <div>
-                <label class="label" for="abTipoSolic">Tipo de solicitacao</label>
-                <input id="abTipoSolic" type="text" value="ABERTURA" />
-              </div>
-              <div>
-                <label class="label" for="abProvedor">Provedor</label>
-                <input id="abProvedor" type="text" />
-              </div>
-            </div>
-            <div class="field-row">
-              <div>
-                <label class="label" for="abReincidente">Reincidente</label>
-                <select id="abReincidente">
-                  <option value="NAO">NAO</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div>
-                <label class="label" for="abEscalonado">Ja escalonado</label>
-                <input id="abEscalonado" type="text" />
-              </div>
-              <div>
-                <label class="label" for="abDataHoraQueda">Data e hora da queda</label>
-                <input id="abDataHoraQueda" type="datetime-local" />
-              </div>
-            </div>
-            <div class="field-row">
-              <div>
-                <label class="label" for="abTsCliente">Realizado TS com o cliente</label>
-                <select id="abTsCliente">
-                  <option value="NAO">NAO</option>
-                  <option value="SIM">SIM</option>
-                </select>
-              </div>
-              <div class="grow">
-                <label class="label" for="abDefeito">Defeito reclamado</label>
-                <select id="abDefeito"></select>
+                <label class="label" for="encQueda">Data e hora da queda</label>
+                <input id="encQueda" type="text" placeholder="dd/mm/aaaa HH:MM[:SS]" />
               </div>
               <div class="compact">
                 <label class="label">&nbsp;</label>
-                <button id="btnRestaurarReclamacao" class="ghost">Restaurar padrao</button>
+                <label class="check">
+                  <input id="encAuto" type="checkbox" />
+                  Calcular automaticamente
+                </label>
+              </div>
+              <div>
+                <label class="label" for="encTempo">Tempo de normalização (HH:MM)</label>
+                <input id="encTempo" type="text" placeholder="48:00" />
               </div>
             </div>
             <div class="field-row">
               <div>
-                <label class="label" for="abHorarioFunc">Horario de funcionamento</label>
-                <input id="abHorarioFunc" type="text" />
-              </div>
-              <div>
-                <label class="label" for="abContatoLocal">Contato local</label>
-                <input id="abContatoLocal" type="text" />
-              </div>
-              <div>
-                <label class="label" for="abContatoValidacao">Contato de validacao</label>
-                <input id="abContatoValidacao" type="text" />
+                <label class="label" for="encNormalizacao">Horário de normalização</label>
+                <input id="encNormalizacao" type="text" placeholder="dd/mm/aaaa HH:MM:SS" />
               </div>
             </div>
-            <div>
-              <label class="label" for="abReclamacao">Reclamacao inicial</label>
-              <textarea id="abReclamacao" spellcheck="false"></textarea>
+            <div class="mask-actions">
+              <button id="btnCopiarEncerramento">Copiar mascara</button>
+              <button id="btnDownloadEncerramento" class="ghost">Baixar TXT</button>
+              <button id="btnLimparEncerramento" class="ghost">Limpar</button>
+              <span id="encStatus" class="hint"></span>
             </div>
           </div>
 
           <div class="mask-actions">
-            <button id="btnCopiarMascara">Copiar mascara</button>
-            <button id="btnDownloadMascara" class="ghost">Baixar TXT</button>
-            <button id="btnLimparMascara" class="ghost">Limpar</button>
             <span id="copystatus" class="hint"></span>
           </div>
           <textarea id="maskText" spellcheck="false"></textarea>
-          <p class="hint">A mascara e gerada com base no registro selecionado e no template ou no formulario de encerramento.</p>
+          <p class="hint">Previa do texto gerado. Copie ou baixe em TXT.</p>
         </div>
       </div>
 
@@ -260,6 +214,7 @@
   <script src="importer.js"></script>
   <script src="search.js"></script>
   <script src="masks.js"></script>
+  <script src="fields.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

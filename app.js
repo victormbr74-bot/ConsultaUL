@@ -5,24 +5,29 @@
 let DB = null;
 let INDEX = null;
 let CURRENT = null;
-let TEMPLATES = [];
 let CUSTOM_CAUSES = [];
 let ABERTURA_EDITED = false;
+let MASK_SUBTAB = 'abertura';
 
 const VIEWS = ['consulta','mascara','importar','loterica'];
 const META_IMPORT = 'import_info';
-const META_TEMPLATES = 'templates';
+const META_CUSTOM_CAUSES = 'custom_causes';
+const META_ABERTURA_STATE = 'abertura_min_state';
+const META_ENCERRAMENTO_STATE = 'encerramento_min_state';
 
 const STORAGE_LAST_QUERY = 'last_query';
-const STORAGE_LAST_TEMPLATE = 'last_template';
-const STORAGE_LAST_OBS = 'last_obs';
-const STORAGE_LAST_FAIL = 'last_fail';
-const STORAGE_LAST_CAUSE = 'last_cause';
-const STORAGE_LAST_CONTACT_NAME = 'last_contact_name';
-const STORAGE_LAST_CONTACT_PHONE = 'last_contact_phone';
-const STORAGE_ABERTURA_LAST = 'abertura_last';
-const META_CUSTOM_CAUSES = 'custom_causes';
-const META_ABERTURA_LAST = 'abertura_padrao_last';
+const STORAGE_ABERTURA_DEFECT = 'abertura_defeito';
+const STORAGE_ABERTURA_RECLAMACAO = 'abertura_reclamacao';
+const STORAGE_ABERTURA_EDITED = 'abertura_editada';
+const STORAGE_ENC_FAIL = 'enc_fail';
+const STORAGE_ENC_CAUSE = 'enc_cause';
+const STORAGE_ENC_CONTACT_NAME = 'enc_contact_name';
+const STORAGE_ENC_CONTACT_PHONE = 'enc_contact_phone';
+const STORAGE_ENC_AUTO = 'enc_auto';
+const STORAGE_ENC_TEMPO = 'enc_tempo';
+const STORAGE_ENC_QUEDA = 'enc_queda';
+const STORAGE_ENC_NORM = 'enc_norm';
+const STORAGE_CUSTOM_CAUSES = 'customCauses';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls) => { const n=document.createElement(tag); if(cls) n.className=cls; return n; };
@@ -56,6 +61,16 @@ function setSearchEnabled(enabled){
   $('#btnBuscar').disabled = !enabled;
 }
 
+function formatDateTimeMinutes(date){
+  const pad = (x)=> String(x).padStart(2,'0');
+  const dd = pad(date.getDate());
+  const mm = pad(date.getMonth()+1);
+  const yyyy = date.getFullYear();
+  const hh = pad(date.getHours());
+  const mi = pad(date.getMinutes());
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+}
+
 function uniqueList(list){
   const seen = new Set();
   const out = [];
@@ -70,6 +85,24 @@ function uniqueList(list){
 
 function getAllCauses(){
   return uniqueList([...(ENCERRAMENTO_CAUSES || []), ...(CUSTOM_CAUSES || [])]);
+}
+
+function setMaskWarning(){
+  const hasRecord = !!CURRENT;
+  $('#maskWarning').classList.toggle('hidden', hasRecord);
+}
+
+function setMaskSubtab(tab){
+  MASK_SUBTAB = tab;
+  document.querySelectorAll('.subtab').forEach(b=>b.classList.toggle('active', b.dataset.subtab===tab));
+  $('#view-mask-abertura').classList.toggle('hidden', tab !== 'abertura');
+  $('#view-mask-encerramento').classList.toggle('hidden', tab !== 'encerramento');
+  setMaskWarning();
+  if(tab === 'abertura') refreshAberturaMinimal();
+  if(tab === 'encerramento'){
+    prefillEncQuedaFromRecord();
+    refreshEncerramentoMinimal();
+  }
 }
 
 function populateEncerramentoOptions(){
@@ -90,109 +123,6 @@ function populateEncerramentoOptions(){
     opt.textContent = c;
     causaSel.appendChild(opt);
   }
-
-  const lastFail = localStorage.getItem(STORAGE_LAST_FAIL);
-  if(lastFail && Array.from(falhaSel.options).some(o=>o.value===lastFail)) falhaSel.value = lastFail;
-  const lastCause = localStorage.getItem(STORAGE_LAST_CAUSE);
-  if(lastCause && Array.from(causaSel.options).some(o=>o.value===lastCause)) causaSel.value = lastCause;
-}
-
-function getEncerramentoPayload(){
-  const falha = $('#encFalha').value || '';
-  const dataHora = parseEncerramentoDate($('#encDataHora').value, $('#encSegundos').value);
-  const causa = $('#encCausa').value || '';
-  const contatoNome = $('#encContatoNome').value || '';
-  const contatoTel = $('#encContatoTel').value || '';
-  return {falha, dataHora, causa, contatoNome, contatoTel};
-}
-
-function refreshEncerramento(){
-  const payload = getEncerramentoPayload();
-  $('#maskText').value = buildEncerramentoText(payload);
-  localStorage.setItem(STORAGE_LAST_FAIL, payload.falha);
-  localStorage.setItem(STORAGE_LAST_CAUSE, payload.causa);
-  localStorage.setItem(STORAGE_LAST_CONTACT_NAME, payload.contatoNome);
-  localStorage.setItem(STORAGE_LAST_CONTACT_PHONE, payload.contatoTel);
-}
-
-function setEncerramentoVisible(visible){
-  $('#encerramentoForm').classList.toggle('hidden', !visible);
-  if(visible) refreshEncerramento();
-}
-
-function setAberturaVisible(visible){
-  $('#aberturaPadraoForm').classList.toggle('hidden', !visible);
-  if(visible){
-    prefillAberturaFromRecord(CURRENT);
-    if(!$('#abReclamacao').value){
-      ABERTURA_EDITED = false;
-      ensureAberturaReclamacaoDefault(true);
-    }
-    refreshAbertura();
-  }
-}
-
-function getAberturaPayload(){
-  return {
-    designacao: $('#abDesignacao').value || '',
-    cod_ul: $('#abCodUl').value || '',
-    cliente: $('#abCliente').value || '',
-    protocolo_oi: $('#abProtocoloOi').value || '',
-    tipo_solicitacao: $('#abTipoSolic').value || '',
-    provedor: $('#abProvedor').value || '',
-    reincidente: $('#abReincidente').value || '',
-    ja_escalonado: $('#abEscalonado').value || '',
-    data_hora_queda: formatAberturaDate($('#abDataHoraQueda').value),
-    realizado_ts: $('#abTsCliente').value || '',
-    defeito_reclamado: $('#abDefeito').value || '',
-    horario_funcionamento: $('#abHorarioFunc').value || '',
-    contato_local: $('#abContatoLocal').value || '',
-    contato_validacao: $('#abContatoValidacao').value || '',
-    reclamacao_inicial: $('#abReclamacao').value || '',
-  };
-}
-
-function saveAberturaState(payload){
-  localStorage.setItem(STORAGE_ABERTURA_LAST, JSON.stringify(payload));
-  setMeta(DB, META_ABERTURA_LAST, payload);
-}
-
-function loadAberturaState(){
-  const raw = localStorage.getItem(STORAGE_ABERTURA_LAST);
-  if(raw){
-    try{ return JSON.parse(raw); } catch { return null; }
-  }
-  return null;
-}
-
-function applyAberturaState(state){
-  if(!state) return;
-  $('#abDesignacao').value = state.designacao || '';
-  $('#abCodUl').value = state.cod_ul || '';
-  $('#abCliente').value = state.cliente || '';
-  $('#abProtocoloOi').value = state.protocolo_oi || '';
-  $('#abTipoSolic').value = state.tipo_solicitacao || 'ABERTURA';
-  $('#abProvedor').value = state.provedor || '';
-  $('#abReincidente').value = state.reincidente || 'NAO';
-  $('#abEscalonado').value = state.ja_escalonado || '';
-  $('#abDataHoraQueda').value = state.data_hora_queda_raw || '';
-  $('#abTsCliente').value = state.realizado_ts || 'NAO';
-  $('#abDefeito').value = state.defeito_reclamado || '';
-  $('#abHorarioFunc').value = state.horario_funcionamento || '';
-  $('#abContatoLocal').value = state.contato_local || '';
-  $('#abContatoValidacao').value = state.contato_validacao || '';
-  $('#abReclamacao').value = state.reclamacao_inicial || '';
-  const padrao = getReclamacaoPadrao($('#abDefeito').value);
-  ABERTURA_EDITED = !!($('#abReclamacao').value && $('#abReclamacao').value !== padrao);
-}
-
-function refreshAbertura(){
-  const payload = getAberturaPayload();
-  $('#maskText').value = buildAberturaPadraoText(payload);
-  saveAberturaState({
-    ...payload,
-    data_hora_queda_raw: $('#abDataHoraQueda').value || '',
-  });
 }
 
 function populateAberturaDefeitos(){
@@ -216,44 +146,156 @@ function ensureAberturaReclamacaoDefault(force){
   }
 }
 
-function prefillAberturaFromRecord(record){
-  if(!record) return;
-  const setIfEmpty = (sel, val)=>{
-    const node = $(sel);
-    if(node && !node.value && val) node.value = val;
+function getAberturaAutoFields(record){
+  if(!record) return {};
+  const rawQueda = pickField(record, ['data_hora_queda','DATA E HORA DA QUEDA','DATA/HORA QUEDA']);
+  const parsedQueda = parseDatePt(rawQueda);
+  const dataQueda = parsedQueda ? formatDateTimeMinutes(parsedQueda) : (rawQueda || '');
+  return {
+    designacao: pickField(record, ['designacao','ccto_oi','CCTO OI','BASE UN','Ponto Logico / Designacao','Ponto Lógico / \nDesignação']),
+    cod_ul: getRecordCode(record),
+    nome_ul: pickField(record, ['nome_loterica','NOME DA LOTERICA','NOME UL']),
+    endereco: pickField(record, ['endereco','ENDERECO','ENDERECO UL']),
+    contato_local: pickField(record, ['contato','CONTATO']),
+    horario_funcionamento: pickField(record, ['horario_funcionamento','HORARIO DE FUNCIONAMENTO']),
+    operadora: pickField(record, ['operadora','OPERADORA','OPERADORA BACKUP']),
+    data_hora_queda: dataQueda,
   };
-  const designacao = pickField(record, ['designacao','ccto_oi','CCTO OI','BASE UN','Ponto Logico / Designacao','Ponto Lógico / \nDesignação']);
-  const codUl = getRecordCode(record);
-  const cliente = pickField(record, ['cliente','razao_social','nome_loterica','NOME DA LOTERICA','NOME UL','empresa_oemp','EMPRESA OEMP']);
-  const provedor = pickField(record, ['provedor','operadora','OPERADORA','OPERADORA BACKUP','EMPRESA OEMP']);
-  const contato = pickField(record, ['contato','CONTATO']);
-  setIfEmpty('#abDesignacao', designacao);
-  setIfEmpty('#abCodUl', codUl);
-  setIfEmpty('#abCliente', cliente);
-  setIfEmpty('#abProvedor', provedor);
-  setIfEmpty('#abContatoLocal', contato);
-  setIfEmpty('#abContatoValidacao', contato);
-  if(!$('#abDataHoraQueda').value){
-    const now = new Date();
-    const pad = (x)=> String(x).padStart(2,'0');
-    $('#abDataHoraQueda').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  }
-  if(!$('#abTipoSolic').value) $('#abTipoSolic').value = 'ABERTURA';
-  refreshAbertura();
 }
 
-function resetEncerramentoForm(){
-  $('#encFalha').value = '';
-  $('#encDataHora').value = '';
-  $('#encSegundos').value = '';
-  $('#encCausa').value = '';
-  $('#encContatoNome').value = '';
-  $('#encContatoTel').value = '';
-  ['#maskText'].forEach(sel=>$(sel).value='');
-  localStorage.removeItem(STORAGE_LAST_FAIL);
-  localStorage.removeItem(STORAGE_LAST_CAUSE);
-  localStorage.removeItem(STORAGE_LAST_CONTACT_NAME);
-  localStorage.removeItem(STORAGE_LAST_CONTACT_PHONE);
+function getAberturaPayload(){
+  const auto = getAberturaAutoFields(CURRENT);
+  return {
+    ...auto,
+    defeito_reclamado: $('#abDefeito').value || '',
+    reclamacao_inicial: $('#abReclamacao').value || '',
+  };
+}
+
+function saveAberturaState(){
+  const state = {
+    defeito: $('#abDefeito').value || '',
+    reclamacao: $('#abReclamacao').value || '',
+    edited: ABERTURA_EDITED,
+  };
+  localStorage.setItem(STORAGE_ABERTURA_DEFECT, state.defeito);
+  localStorage.setItem(STORAGE_ABERTURA_RECLAMACAO, state.reclamacao);
+  localStorage.setItem(STORAGE_ABERTURA_EDITED, state.edited ? '1' : '0');
+  setMeta(DB, META_ABERTURA_STATE, state);
+}
+
+function applyAberturaState(state){
+  if(!state) return;
+  if(state.defeito) $('#abDefeito').value = state.defeito;
+  if(state.reclamacao) $('#abReclamacao').value = state.reclamacao;
+  ABERTURA_EDITED = !!state.edited;
+}
+
+function refreshAberturaMinimal(){
+  if(!$('#abDefeito').value) populateAberturaDefeitos();
+  const payload = getAberturaPayload();
+  $('#maskText').value = buildAberturaMinimalText(payload);
+  saveAberturaState();
+}
+
+function getQuedaDate(){
+  const manual = $('#encQueda').value || '';
+  const fromManual = parseDatePt(manual);
+  if(fromManual) return fromManual;
+  if(CURRENT){
+    const raw = pickField(CURRENT, ['data_hora_queda','DATA E HORA DA QUEDA','DATA/HORA QUEDA']);
+    const parsed = parseDatePt(raw);
+    if(parsed) return parsed;
+  }
+  return null;
+}
+
+function normalizeManualNormalizacao(text){
+  const parsed = parseDatePt(text);
+  if(parsed) return formatDateTimeSeconds(parsed);
+  const m = String(text || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+  if(m) return `${m[1]}/${m[2]}/${m[3]} ${m[4]}:${m[5]}:00`;
+  return '';
+}
+
+function updateEncerramentoNormalizacao(){
+  const auto = $('#encAuto').checked;
+  $('#encTempo').disabled = !auto;
+  $('#encNormalizacao').readOnly = auto;
+  if(auto){
+    const seconds = parseHoraMinutos($('#encTempo').value);
+    const base = new Date();
+    if(seconds === null){
+      $('#encNormalizacao').value = '';
+      $('#encStatus').textContent = 'Tempo invalido.';
+      return '';
+    }
+    const normal = new Date(base.getTime() - (seconds * 1000));
+    const text = formatDateTimeSeconds(normal);
+    $('#encNormalizacao').value = text;
+    $('#encStatus').textContent = '';
+    return text;
+  }
+  const manual = normalizeManualNormalizacao($('#encNormalizacao').value);
+  if(manual){
+    $('#encNormalizacao').value = manual;
+    $('#encStatus').textContent = '';
+    return manual;
+  }
+  $('#encStatus').textContent = '';
+  return '';
+}
+
+function getEncerramentoPayload(){
+  const dataHora = updateEncerramentoNormalizacao() || formatDateTimeSeconds(new Date());
+  return {
+    falha: $('#encFalha').value || '',
+    dataHora,
+    causa: $('#encCausa').value || '',
+    contatoNome: $('#encContatoNome').value || '',
+    contatoTel: $('#encContatoTel').value || '',
+  };
+}
+
+function saveEncerramentoState(){
+  const state = {
+    falha: $('#encFalha').value || '',
+    causa: $('#encCausa').value || '',
+    contatoNome: $('#encContatoNome').value || '',
+    contatoTel: $('#encContatoTel').value || '',
+    auto: $('#encAuto').checked,
+    tempo: $('#encTempo').value || '',
+    queda: $('#encQueda').value || '',
+    normalizacao: $('#encNormalizacao').value || '',
+  };
+  localStorage.setItem(STORAGE_ENC_FAIL, state.falha);
+  localStorage.setItem(STORAGE_ENC_CAUSE, state.causa);
+  localStorage.setItem(STORAGE_ENC_CONTACT_NAME, state.contatoNome);
+  localStorage.setItem(STORAGE_ENC_CONTACT_PHONE, state.contatoTel);
+  localStorage.setItem(STORAGE_ENC_AUTO, state.auto ? '1' : '0');
+  localStorage.setItem(STORAGE_ENC_TEMPO, state.tempo);
+  localStorage.setItem(STORAGE_ENC_QUEDA, state.queda);
+  localStorage.setItem(STORAGE_ENC_NORM, state.normalizacao);
+  setMeta(DB, META_ENCERRAMENTO_STATE, state);
+}
+
+function applyEncerramentoState(state){
+  if(!state) return;
+  if(state.falha) $('#encFalha').value = state.falha;
+  if(state.causa) $('#encCausa').value = state.causa;
+  if(state.contatoNome) $('#encContatoNome').value = state.contatoNome;
+  if(state.contatoTel) $('#encContatoTel').value = state.contatoTel;
+  $('#encAuto').checked = !!state.auto;
+  if(state.tempo) $('#encTempo').value = state.tempo;
+  if(state.queda) $('#encQueda').value = state.queda;
+  if(state.normalizacao) $('#encNormalizacao').value = state.normalizacao;
+}
+
+function refreshEncerramentoMinimal(){
+  if(!$('#encFalha').value) populateEncerramentoOptions();
+  const payload = getEncerramentoPayload();
+  $('#maskText').value = buildEncerramentoText(payload);
+  saveEncerramentoState();
 }
 
 function activateTab(tab){
@@ -262,6 +304,7 @@ function activateTab(tab){
     const view = document.querySelector(`#view-${v}`);
     if(view) view.classList.toggle('hidden', v!==tab);
   }
+  if(tab === 'mascara') setMaskSubtab(MASK_SUBTAB);
 }
 
 function renderResults(list){
@@ -310,79 +353,68 @@ function renderResults(list){
 }
 
 function renderConsulta(r){
-  if(!r) return;
-  const code = getRecordCode(r);
-  const nome = pickField(r, ['nome_loterica','NOME DA LOTERICA','NOME UL']);
-  const endereco = pickField(r, ['endereco','ENDERECO','ENDERECO UL']);
-  const uf = pickField(r, ['uf','UF']);
-  const contato = pickField(r, ['contato','CONTATO']);
-  const status = pickField(r, ['status','STATUS','STATUS UL']);
-  const homolog = pickField(r, ['homologado','HOMOLOGADO']);
-  const migr = pickField(r, ['migracao','MIGRACAO','MIGRACAO']);
-  const owner = pickField(r, ['owner','OWNER']);
-  const tipo = pickField(r, ['tipo_ul','tipo_loterica','TIPO UL','TIPO LOTERICA']);
-  const tfl = pickField(r, ['tfl','tfls','TFL','TFLS']);
+  const empty = !r;
+  $('#consulta-empty').classList.toggle('hidden', !empty);
+  $('#consulta-layout').classList.toggle('hidden', empty);
+  if(empty){
+    ['#kv-loterica','#kv-principal','#kv-backup','#cmds'].forEach(sel=>$(sel).innerHTML='');
+    return;
+  }
 
-  const cctoOi = pickField(r, ['ccto_oi','CCTO OI','BASE UN']);
-  const ipNat = pickField(r, ['ip_nat','IP NAT','IP de NAT']);
-  const ipWan = pickField(r, ['ip_wan','IP WAN']);
-  const loopWan = pickField(r, ['loopback_wan','LOOPBACK PRINCIPAL','LOOPBACK PRIMARIO']);
-  const loopSw = pickField(r, ['loopback_lan','LOOPBACK SWITCH']);
-
-  const empOemp = pickField(r, ['empresa_oemp','EMPRESA OEMP']);
-  const cctoOemp = pickField(r, ['ccto_oemp','CCTO OEMP','CIRCUITO OEMP']);
-  const loopBackup = pickField(r, ['loopback_backup','loopback_lan','LOOPBACK SECUNDARIO','LOOPBACK BACKUP']);
-  const oper = pickField(r, ['operadora','OPERADORA','OPERADORA BACKUP']);
-  const respBackup = pickField(r, ['resp_backup','RESP BACKUP']);
+  const val = (key)=> getField(r, key);
+  const loopP = val('loopback_primario');
+  const loopB = val('loopback_backup');
+  const ipNat = val('ip_nat');
 
   const putKV = (target, entries) => {
     const box = $(target);
     box.innerHTML='';
     for(const [k,v] of entries){
       const kk=el('div','k'); kk.textContent=k;
-      const vv=el('div','v'); vv.textContent=v || '-';
+      const vv=el('div','v'); vv.textContent=(v && v !== '' ? v : '—');
       box.appendChild(kk); box.appendChild(vv);
     }
   };
 
   putKV('#kv-loterica', [
-    ['Codigo UL', code],
-    ['Nome', nome],
-    ['Status', status],
-    ['UF', uf],
-    ['Contato', contato],
-    ['Endereco', endereco],
-    ['Homologado', homolog],
-    ['Migracao', migr],
-    ['Owner', owner],
-    ['Tipo', tipo],
-    ['TFL', tfl],
+    ['Codigo UL', val('codigo_ul')],
+    ['Nome', val('nome_ul')],
+    ['Status', val('status')],
+    ['UF', val('uf')],
+    ['Contato', val('contato')],
+    ['Endereco', val('endereco')],
+    ['Homologado', val('homolo')],
+    ['Migracao', val('migracao')],
+    ['Meraki', val('meraki')],
+    ['Owner', val('owner')],
+    ['Tipo', val('tipo_ul')],
+    ['TFL', val('tfl')],
   ]);
 
   putKV('#kv-principal', [
-    ['Designacao/CCTO', cctoOi],
+    ['Designacao/CCTO', val('designacao_atual_antiga')],
     ['IP NAT', ipNat],
-    ['IP WAN', ipWan],
-    ['Loopback WAN', loopWan],
-    ['Loopback switch', loopSw],
+    ['IP WAN', val('ip_wan')],
+    ['Loopback WAN', loopP],
+    ['Loopback switch', val('loopback_switch')],
   ]);
 
   putKV('#kv-backup', [
-    ['Empresa OEMP', empOemp],
-    ['Circuito/CCTO OEMP', cctoOemp],
-    ['Loopback backup', loopBackup],
-    ['Operadora backup', oper],
-    ['Responsavel backup', respBackup],
+    ['Empresa OEMP', val('empresa_oemp')],
+    ['Circuito/CCTO OEMP', val('circuito_oemp')],
+    ['Loopback backup', loopB],
+    ['Operadora backup', val('operadora_4g')],
+    ['Responsavel backup', val('responsavel_backup')],
   ]);
 
   const cmds = $('#cmds');
   cmds.innerHTML='';
   const cmdList=[];
-  if(loopWan) cmdList.push(['SSH principal', `ssh ${loopWan}`]);
-  if(loopBackup && loopBackup !== '0') cmdList.push(['SSH backup', `ssh ${loopBackup}`]);
-  if(loopWan) cmdList.push(['Ping principal (MTU)', `ping ${loopWan} df-bit size 1472 source Gi0/0/1.1090 repeat 10`]);
-  if(loopBackup && loopBackup !== '0') cmdList.push(['Ping backup', `ping ${loopBackup} df-bit size 1300 source Gi0/0/1.1090 repeat 10`]);
-  if(ipNat) cmdList.push(['Acesso via NAT', `ssh SEU_USUARIO@${ipNat}`]);
+  if(loopP && loopP !== '—') cmdList.push(['SSH principal', `ssh ${loopP}`]);
+  if(loopB && loopB !== '—') cmdList.push(['SSH backup', `ssh ${loopB}`]);
+  if(loopP && loopP !== '—') cmdList.push(['Ping principal (MTU)', `ping ${loopP} df-bit size 1472 source Gi0/0/1.1090 repeat 10`]);
+  if(loopB && loopB !== '—') cmdList.push(['Ping backup', `ping ${loopB} df-bit size 1300 source Gi0/0/1.1090 repeat 10`]);
+  if(ipNat && ipNat !== '—') cmdList.push(['Acesso via NAT', `ssh SEU_USUARIO@${ipNat}`]);
 
   for(const [label,text] of cmdList){
     const c=el('div','cmd');
@@ -402,78 +434,16 @@ function renderConsulta(r){
   }
 }
 
-function buildMaskData(r){
-  return {
-    cod_ul: getRecordCode(r),
-    nome_loterica: pickField(r, ['nome_loterica','NOME DA LOTERICA','NOME UL']),
-    endereco: pickField(r, ['endereco','ENDERECO','ENDERECO UL']),
-    cidade: pickField(r, ['cidade','CIDADE','MUNICIPIO']),
-    uf: pickField(r, ['uf','UF']),
-    operadora: pickField(r, ['operadora','OPERADORA','OPERADORA BACKUP']),
-    ccto_oi: pickField(r, ['ccto_oi','CCTO OI','BASE UN']),
-    ccto_oemp: pickField(r, ['ccto_oemp','CCTO OEMP','CIRCUITO OEMP']),
-    ip_nat: pickField(r, ['ip_nat','IP NAT','IP de NAT']),
-    loopback_wan: pickField(r, ['loopback_wan','LOOPBACK PRINCIPAL','LOOPBACK PRIMARIO']),
-    loopback_lan: pickField(r, ['loopback_lan','LOOPBACK SWITCH','LOOPBACK SECUNDARIO']),
-    status: pickField(r, ['status','STATUS','STATUS UL']),
-  };
-}
-
-function refreshMask(){
-  const tplId = $('#maskTemplate').value;
-  if(tplId === 'encerramento'){
-    setEncerramentoVisible(true);
-    setAberturaVisible(false);
-    $('#maskTemplateRow').classList.add('hidden');
-    $('#maskObsRow').classList.add('hidden');
-    localStorage.setItem(STORAGE_LAST_TEMPLATE, tplId);
-    return;
-  }
-  if(tplId === 'abertura_padrao'){
-    setEncerramentoVisible(false);
-    setAberturaVisible(true);
-    $('#maskTemplateRow').classList.add('hidden');
-    $('#maskObsRow').classList.add('hidden');
-    localStorage.setItem(STORAGE_LAST_TEMPLATE, tplId);
-    return;
-  }
-  setEncerramentoVisible(false);
-  setAberturaVisible(false);
-  $('#maskTemplateRow').classList.remove('hidden');
-  $('#maskObsRow').classList.remove('hidden');
-  const tpl = TEMPLATES.find(t=>t.id===tplId) || TEMPLATES[0];
-  const obs = $('#maskObs').value || '';
-  localStorage.setItem(STORAGE_LAST_TEMPLATE, tplId);
-  localStorage.setItem(STORAGE_LAST_OBS, obs);
+function prefillEncQuedaFromRecord(){
   if(!CURRENT) return;
-  const data = buildMaskData(CURRENT);
-  const text = renderTemplate(tpl.text, data, obs);
-  $('#maskText').value = text;
-}
-
-function setTemplatesList(templates){
-  TEMPLATES = getTemplates(templates);
-  const sel = $('#maskTemplate');
-  sel.innerHTML = '';
-  for(const t of TEMPLATES){
-    const opt = el('option');
-    opt.value = t.id;
-    opt.textContent = t.name;
-    sel.appendChild(opt);
+  if($('#encQueda').value) return;
+  const raw = pickField(CURRENT, ['data_hora_queda','DATA E HORA DA QUEDA','DATA/HORA QUEDA']);
+  const parsed = parseDatePt(raw);
+  if(parsed){
+    $('#encQueda').value = formatDateTimeSeconds(parsed);
+  } else if(raw) {
+    $('#encQueda').value = raw;
   }
-  const encOpt = el('option');
-  encOpt.value = 'encerramento';
-  encOpt.textContent = 'Encerramento';
-  sel.appendChild(encOpt);
-  const abOpt = el('option');
-  abOpt.value = 'abertura_padrao';
-  abOpt.textContent = 'MÁSCARA DE ABERTURA (PADRÃO IMAGEM)';
-  sel.appendChild(abOpt);
-  const last = localStorage.getItem(STORAGE_LAST_TEMPLATE);
-  if(last && TEMPLATES.some(t=>t.id===last)) sel.value = last;
-  if(last === 'encerramento') sel.value = 'encerramento';
-  if(last === 'abertura_padrao') sel.value = 'abertura_padrao';
-  refreshMask();
 }
 
 function selectRecord(code){
@@ -481,8 +451,10 @@ function selectRecord(code){
   const r = INDEX.mapByCodUl.get(code);
   CURRENT = r;
   renderConsulta(r);
-  refreshMask();
-  prefillAberturaFromRecord(r);
+  setMaskWarning();
+  prefillEncQuedaFromRecord();
+  if(MASK_SUBTAB === 'abertura') refreshAberturaMinimal();
+  if(MASK_SUBTAB === 'encerramento') refreshEncerramentoMinimal();
   $('#results').innerHTML = `<div class="hint">Registro selecionado: <code>${code}</code></div>`;
   activateTab('consulta');
 }
@@ -504,11 +476,20 @@ function updateSuggestions(){
 async function loadFromIndexedDB(){
   CURRENT = null;
   const records = await getAllRecords(DB);
-  const templates = await getMeta(DB, META_TEMPLATES);
   const importInfo = await getMeta(DB, META_IMPORT);
   const customCauses = await getMeta(DB, META_CUSTOM_CAUSES);
-  const aberturaState = await getMeta(DB, META_ABERTURA_LAST);
-  CUSTOM_CAUSES = Array.isArray(customCauses) ? customCauses : [];
+  const aberturaState = await getMeta(DB, META_ABERTURA_STATE);
+  const encerramentoState = await getMeta(DB, META_ENCERRAMENTO_STATE);
+  if(Array.isArray(customCauses)){
+    CUSTOM_CAUSES = customCauses;
+  } else {
+    const raw = localStorage.getItem(STORAGE_CUSTOM_CAUSES);
+    try{
+      CUSTOM_CAUSES = raw ? JSON.parse(raw) : [];
+    } catch {
+      CUSTOM_CAUSES = [];
+    }
+  }
 
   if(records.length === 0){
     INDEX = null;
@@ -520,19 +501,33 @@ async function loadFromIndexedDB(){
     setResultsHint(`Base carregada: ${records.length.toLocaleString('pt-BR')} registros.`);
   }
 
-  setTemplatesList(templates);
-  const obs = localStorage.getItem(STORAGE_LAST_OBS);
-  if(obs) $('#maskObs').value = obs;
   populateEncerramentoOptions();
   populateAberturaDefeitos();
-  const lastName = localStorage.getItem(STORAGE_LAST_CONTACT_NAME);
-  const lastTel = localStorage.getItem(STORAGE_LAST_CONTACT_PHONE);
-  if(lastName) $('#encContatoNome').value = lastName;
-  if(lastTel) $('#encContatoTel').value = lastTel;
-  if(aberturaState) applyAberturaState(aberturaState);
-  const localAbertura = loadAberturaState();
-  if(!aberturaState && localAbertura) applyAberturaState(localAbertura);
+  if(aberturaState){
+    applyAberturaState(aberturaState);
+  } else {
+    const defect = localStorage.getItem(STORAGE_ABERTURA_DEFECT);
+    const reclamacao = localStorage.getItem(STORAGE_ABERTURA_RECLAMACAO);
+    const edited = localStorage.getItem(STORAGE_ABERTURA_EDITED) === '1';
+    if(defect || reclamacao) applyAberturaState({defeito: defect, reclamacao, edited});
+  }
+  if(encerramentoState){
+    applyEncerramentoState(encerramentoState);
+  } else {
+    applyEncerramentoState({
+      falha: localStorage.getItem(STORAGE_ENC_FAIL),
+      causa: localStorage.getItem(STORAGE_ENC_CAUSE),
+      contatoNome: localStorage.getItem(STORAGE_ENC_CONTACT_NAME),
+      contatoTel: localStorage.getItem(STORAGE_ENC_CONTACT_PHONE),
+      auto: localStorage.getItem(STORAGE_ENC_AUTO) === '1',
+      tempo: localStorage.getItem(STORAGE_ENC_TEMPO),
+      queda: localStorage.getItem(STORAGE_ENC_QUEDA),
+      normalizacao: localStorage.getItem(STORAGE_ENC_NORM),
+    });
+  }
   if(!$('#abReclamacao').value) ensureAberturaReclamacaoDefault(true);
+  setMaskSubtab(MASK_SUBTAB);
+  renderConsulta(null);
 
   ['#kv-loterica','#kv-principal','#kv-backup','#cmds'].forEach(sel=>$(sel).innerHTML='');
   $('#maskText').value = '';
@@ -573,43 +568,28 @@ async function wireUI(){
     CURRENT=null;
     ['#kv-loterica','#kv-principal','#kv-backup','#cmds'].forEach(sel=>$(sel).innerHTML='');
     $('#maskText').value='';
+    setMaskWarning();
+    if(MASK_SUBTAB === 'abertura') refreshAberturaMinimal();
+    if(MASK_SUBTAB === 'encerramento') refreshEncerramentoMinimal();
+    renderConsulta(null);
   });
 
   document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click', ()=>activateTab(b.dataset.tab)));
 
-  $('#maskTemplate').addEventListener('change', refreshMask);
-  $('#maskObs').addEventListener('input', refreshMask);
-  $('#encFalha').addEventListener('change', refreshEncerramento);
-  $('#encDataHora').addEventListener('change', refreshEncerramento);
-  $('#encSegundos').addEventListener('input', refreshEncerramento);
-  $('#encCausa').addEventListener('change', refreshEncerramento);
-  $('#encContatoNome').addEventListener('input', refreshEncerramento);
-  $('#encContatoTel').addEventListener('input', refreshEncerramento);
+  document.querySelectorAll('.subtab').forEach(b=>b.addEventListener('click', ()=>setMaskSubtab(b.dataset.subtab)));
 
-  $('#abDesignacao').addEventListener('input', refreshAbertura);
-  $('#abCodUl').addEventListener('input', refreshAbertura);
-  $('#abCliente').addEventListener('input', refreshAbertura);
-  $('#abProtocoloOi').addEventListener('input', refreshAbertura);
-  $('#abTipoSolic').addEventListener('input', refreshAbertura);
-  $('#abProvedor').addEventListener('input', refreshAbertura);
-  $('#abReincidente').addEventListener('change', refreshAbertura);
-  $('#abEscalonado').addEventListener('input', refreshAbertura);
-  $('#abDataHoraQueda').addEventListener('change', refreshAbertura);
-  $('#abTsCliente').addEventListener('change', refreshAbertura);
+
   $('#abDefeito').addEventListener('change', ()=>{
     if(!ABERTURA_EDITED) ensureAberturaReclamacaoDefault(true);
-    refreshAbertura();
+    refreshAberturaMinimal();
   });
-  $('#abHorarioFunc').addEventListener('input', refreshAbertura);
-  $('#abContatoLocal').addEventListener('input', refreshAbertura);
-  $('#abContatoValidacao').addEventListener('input', refreshAbertura);
   $('#abReclamacao').addEventListener('input', ()=>{
     ABERTURA_EDITED = true;
-    refreshAbertura();
+    refreshAberturaMinimal();
   });
   $('#btnRestaurarReclamacao').addEventListener('click', ()=>{
     ensureAberturaReclamacaoDefault(true);
-    refreshAbertura();
+    refreshAberturaMinimal();
   });
 
   $('#btnAddCausa').addEventListener('click', async ()=>{
@@ -619,42 +599,48 @@ async function wireUI(){
     if(!trimmed) return;
     CUSTOM_CAUSES = uniqueList([...(CUSTOM_CAUSES || []), trimmed]);
     await setMeta(DB, META_CUSTOM_CAUSES, CUSTOM_CAUSES);
+    localStorage.setItem(STORAGE_CUSTOM_CAUSES, JSON.stringify(CUSTOM_CAUSES));
     populateEncerramentoOptions();
     $('#encCausa').value = trimmed;
-    refreshEncerramento();
+    refreshEncerramentoMinimal();
   });
 
   $('#btnLastContato').addEventListener('click', ()=>{
-    const lastName = localStorage.getItem(STORAGE_LAST_CONTACT_NAME) || '';
-    const lastTel = localStorage.getItem(STORAGE_LAST_CONTACT_PHONE) || '';
+    const lastName = localStorage.getItem(STORAGE_ENC_CONTACT_NAME) || '';
+    const lastTel = localStorage.getItem(STORAGE_ENC_CONTACT_PHONE) || '';
     $('#encContatoNome').value = lastName;
     $('#encContatoTel').value = lastTel;
-    refreshEncerramento();
+    refreshEncerramentoMinimal();
   });
 
-  $('#btnCopiarMascara').addEventListener('click', async ()=>{
+  $('#encFalha').addEventListener('change', refreshEncerramentoMinimal);
+  $('#encCausa').addEventListener('change', refreshEncerramentoMinimal);
+  $('#encContatoNome').addEventListener('input', refreshEncerramentoMinimal);
+  $('#encContatoTel').addEventListener('input', refreshEncerramentoMinimal);
+  $('#encAuto').addEventListener('change', refreshEncerramentoMinimal);
+  $('#encTempo').addEventListener('input', refreshEncerramentoMinimal);
+  $('#encQueda').addEventListener('input', refreshEncerramentoMinimal);
+  $('#encNormalizacao').addEventListener('input', refreshEncerramentoMinimal);
+
+  $('#btnCopiarAbertura').addEventListener('click', async ()=>{
     const t = $('#maskText').value;
     try{
       await navigator.clipboard.writeText(t);
-      $('#copystatus').textContent='Copiado.';
-      setTimeout(()=>$('#copystatus').textContent='',1200);
+      $('#abStatus').textContent='Copiado.';
+      setTimeout(()=>$('#abStatus').textContent='',1200);
     } catch {
-      $('#copystatus').textContent='Nao foi possivel copiar automaticamente. Selecione o texto e copie manualmente.';
+      $('#abStatus').textContent='Nao foi possivel copiar automaticamente.';
     }
   });
 
-  $('#btnDownloadMascara').addEventListener('click', ()=>{
+  $('#btnDownloadAbertura').addEventListener('click', ()=>{
     const text = $('#maskText').value;
     if(!text) return;
     const now = new Date();
     const pad = (x)=> String(x).padStart(2,'0');
     const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     const code = CURRENT ? (getRecordCode(CURRENT) || 'sem_codigo') : 'sem_codigo';
-    const tpl = $('#maskTemplate').value;
-    const name = tpl === 'encerramento'
-      ? 'encerramento'
-      : (tpl === 'abertura_padrao' ? 'abertura_padrao' : 'mascara');
-    const filename = `${name}_${code}_${stamp}.txt`;
+    const filename = `abertura_${code}_${stamp}.txt`;
     const blob = new Blob([text], {type:'text/plain'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -664,34 +650,51 @@ async function wireUI(){
     setTimeout(()=>URL.revokeObjectURL(url), 1000);
   });
 
-  $('#btnLimparMascara').addEventListener('click', ()=>{
-    const tpl = $('#maskTemplate').value;
-    if(tpl === 'encerramento'){
-      resetEncerramentoForm();
-    } else if(tpl === 'abertura_padrao'){
-      $('#abDesignacao').value = '';
-      $('#abCodUl').value = '';
-      $('#abCliente').value = '';
-      $('#abProtocoloOi').value = '';
-      $('#abTipoSolic').value = 'ABERTURA';
-      $('#abProvedor').value = '';
-      $('#abReincidente').value = 'NAO';
-      $('#abEscalonado').value = '';
-      $('#abDataHoraQueda').value = '';
-      $('#abTsCliente').value = 'NAO';
-      $('#abHorarioFunc').value = '';
-      $('#abContatoLocal').value = '';
-      $('#abContatoValidacao').value = '';
-      ABERTURA_EDITED = false;
-      ensureAberturaReclamacaoDefault(true);
-      $('#maskText').value = '';
-      localStorage.removeItem(STORAGE_ABERTURA_LAST);
-      setMeta(DB, META_ABERTURA_LAST, null);
-    } else {
-      $('#maskObs').value = '';
-      $('#maskText').value = '';
-      localStorage.removeItem(STORAGE_LAST_OBS);
+  $('#btnLimparAbertura').addEventListener('click', ()=>{
+    ABERTURA_EDITED = false;
+    populateAberturaDefeitos();
+    ensureAberturaReclamacaoDefault(true);
+    refreshAberturaMinimal();
+  });
+
+  $('#btnCopiarEncerramento').addEventListener('click', async ()=>{
+    const t = $('#maskText').value;
+    try{
+      await navigator.clipboard.writeText(t);
+      $('#encStatus').textContent='Copiado.';
+      setTimeout(()=>$('#encStatus').textContent='',1200);
+    } catch {
+      $('#encStatus').textContent='Nao foi possivel copiar automaticamente.';
     }
+  });
+
+  $('#btnDownloadEncerramento').addEventListener('click', ()=>{
+    const text = $('#maskText').value;
+    if(!text) return;
+    const now = new Date();
+    const pad = (x)=> String(x).padStart(2,'0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const code = CURRENT ? (getRecordCode(CURRENT) || 'sem_codigo') : 'sem_codigo';
+    const filename = `encerramento_${code}_${stamp}.txt`;
+    const blob = new Blob([text], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  });
+
+  $('#btnLimparEncerramento').addEventListener('click', ()=>{
+    $('#encFalha').value = '';
+    $('#encCausa').value = '';
+    $('#encContatoNome').value = '';
+    $('#encContatoTel').value = '';
+    $('#encAuto').checked = false;
+    $('#encTempo').value = '';
+    $('#encQueda').value = '';
+    $('#encNormalizacao').value = '';
+    refreshEncerramentoMinimal();
   });
 
   $('#btnImportXlsx').addEventListener('click', async ()=>{
@@ -702,12 +705,11 @@ async function wireUI(){
     }
     setStatus('#importStatus', ['Lendo arquivo...']);
     try{
-      const {records, report, templates} = await importXlsxFile(file);
+      const {records, report} = await importXlsxFile(file);
       setStatus('#importStatus', ['Salvando...']);
       await clearRecords(DB);
       await putManyRecords(DB, records);
       await setMeta(DB, META_IMPORT, report);
-      await setMeta(DB, META_TEMPLATES, templates);
       await loadFromIndexedDB();
 
       const lines = [
@@ -794,7 +796,9 @@ async function wireUI(){
     await loadFromIndexedDB();
     CURRENT = record;
     renderConsulta(record);
-    refreshMask();
+    prefillEncQuedaFromRecord();
+    if(MASK_SUBTAB === 'abertura') refreshAberturaMinimal();
+    if(MASK_SUBTAB === 'encerramento') refreshEncerramentoMinimal();
     setStatus('#ulStatus', [`Registro ${code} salvo.`]);
   });
 
@@ -810,6 +814,7 @@ async function wireUI(){
       CURRENT = null;
       ['#kv-loterica','#kv-principal','#kv-backup','#cmds'].forEach(sel=>$(sel).innerHTML='');
       $('#maskText').value='';
+      renderConsulta(null);
     }
     setStatus('#ulStatus', [`Registro ${code} excluido.`]);
   });
