@@ -1,16 +1,30 @@
-SISTEMA WEB (LOCAL) - CONSULTA LOTERICAS
+SISTEMA WEB (STATICO) - CONSULTA LOTERICAS
 
-1) Rode localmente (recomendado):
-   - Abra um terminal dentro desta pasta
-   - Execute: python -m http.server 8000
-   - Abra: http://localhost:8000
+Como rodar localmente:
+1) Abra um terminal dentro desta pasta
+2) Execute: python -m http.server 8000
+3) Abra: http://localhost:8000
 
-2) Como funciona:
-   - data.json: base extraida da planilha (CONSULTA MASSIVA + MACRO_COD_UL)
-   - index.html + app.js: interface com busca e duas abas (Consulta / Mascara)
+Como importar XLSX:
+1) Abra a aba "Importar base (XLSX)"
+2) Selecione o arquivo .xlsx
+3) Clique em "Importar XLSX"
+4) O app mostra um relatorio e salva no IndexedDB (offline)
 
-3) Alterar a mascara:
-   - Edite a funcao buildMascara() em app.js para refletir exatamente o texto/padroes do seu time.
+Apagar base local:
+- Na aba "Importar base (XLSX)", clique em "Apagar base local"
 
-4) Segurança:
-   - Nao envia nada para internet. Tudo roda no seu PC.
+Exportar JSON da base (backup):
+- Na aba "Importar base (XLSX)", clique em "Exportar JSON da base"
+
+Importar JSON da base (restaurar):
+- Na aba "Importar base (XLSX)", selecione o JSON e clique em "Importar JSON da base"
+
+GitHub Pages:
+- O app e 100% front-end, funciona via arquivos estaticos.
+- Publique o repositorio no GitHub Pages e acesse normalmente.
+
+Observacoes:
+- Persistencia principal: IndexedDB (lotericasDB / records / meta)
+- localStorage usado apenas para preferencias (ultima busca, template, observacao)
+- Nao envia dados para a internet

@@ -10,7 +10,7 @@
   <header class="top">
     <div>
       <h1>Consulta de Lotericas</h1>
-      <p class="sub">Base local (JSON) gerada a partir da planilha. Consulta rápida estilo “CONSULTA” e “MASCARAS ABERTURA”.</p>
+      <p class="sub">Base local importada do XLSX. Consulta rapida estilo “CONSULTA” e “MASCARAS ABERTURA”.</p>
     </div>
   </header>
 
@@ -19,7 +19,8 @@
       <div class="search-row">
         <label class="label" for="q">Buscar por <b>Código UL</b>, <b>CCTO</b> ou <b>Nome</b></label>
         <div class="search-controls">
-          <input id="q" type="text" placeholder="Ex: 06-008197-0 ou CRPN5176950 ou CONSORTE" autocomplete="off" />
+          <input id="q" type="text" list="suggestions" placeholder="Ex: 06-008197-0 ou CRPN5176950 ou CONSORTE" autocomplete="off" />
+          <datalist id="suggestions"></datalist>
           <button id="btnBuscar">Buscar</button>
           <button id="btnLimpar" class="ghost">Limpar</button>
         </div>
@@ -32,7 +33,9 @@
     <section class="card">
       <div class="tabs">
         <button class="tab active" data-tab="consulta">Consulta</button>
-        <button class="tab" data-tab="mascara">Máscara</button>
+        <button class="tab" data-tab="mascara">Mascaras</button>
+        <button class="tab" data-tab="importar">Importar base (XLSX)</button>
+        <button class="tab" data-tab="loterica">Atualizar loterica</button>
       </div>
 
       <div id="view-consulta" class="view">
@@ -57,12 +60,52 @@
       </div>
 
       <div id="view-mascara" class="view hidden">
-        <div class="mask-actions">
-          <button id="btnCopiarMascara">Copiar máscara</button>
-          <span id="copystatus" class="hint"></span>
+        <div class="panel">
+          <label class="label" for="maskTemplate">Template</label>
+          <select id="maskTemplate"></select>
+          <label class="label" for="maskObs">Observacao</label>
+          <textarea id="maskObs" spellcheck="false" placeholder="Opcional: observacoes especificas"></textarea>
+          <div class="mask-actions">
+            <button id="btnCopiarMascara">Copiar mascara</button>
+            <span id="copystatus" class="hint"></span>
+          </div>
+          <textarea id="maskText" spellcheck="false"></textarea>
+          <p class="hint">A mascara e gerada com base no registro selecionado e no template.</p>
         </div>
-        <textarea id="maskText" spellcheck="false"></textarea>
-        <p class="hint">Essa máscara é gerada automaticamente com base no registro selecionado. Ajuste “Problema”, “Defeito reclamado”, “Troubleshooting” e horários conforme o caso real.</p>
+      </div>
+
+      <div id="view-importar" class="view hidden">
+        <div class="panel">
+          <h2>Importar base (XLSX)</h2>
+          <p class="hint">Selecione o XLSX e importe. Os dados ficam salvos no navegador (IndexedDB).</p>
+          <input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+          <div class="actions">
+            <button id="btnImportXlsx">Importar XLSX</button>
+            <button id="btnClearDb" class="ghost">Apagar base local</button>
+          </div>
+          <div class="actions">
+            <button id="btnExportJson" class="ghost">Exportar JSON da base</button>
+            <input id="jsonFile" type="file" accept=".json,application/json" />
+            <button id="btnImportJson" class="ghost">Importar JSON da base</button>
+          </div>
+          <div id="importStatus" class="status"></div>
+        </div>
+      </div>
+
+      <div id="view-loterica" class="view hidden">
+        <div class="panel">
+          <h2>Atualizar uma loterica</h2>
+          <label class="label" for="ulCode">Codigo UL</label>
+          <input id="ulCode" type="text" placeholder="Ex: 19-006776-4" autocomplete="off" />
+          <label class="label" for="ulJson">JSON do registro</label>
+          <textarea id="ulJson" spellcheck="false" placeholder="Cole aqui o JSON de uma loterica"></textarea>
+          <div class="actions">
+            <button id="btnFillSelected" class="ghost">Usar selecionado</button>
+            <button id="btnApplyUl">Aplicar atualizacao</button>
+            <button id="btnDeleteUl" class="ghost">Excluir loterica</button>
+          </div>
+          <div id="ulStatus" class="status"></div>
+        </div>
       </div>
     </section>
 
@@ -73,14 +116,19 @@
         <li>Abra um terminal dentro dela e rode: <code>python -m http.server 8000</code></li>
         <li>Acesse no navegador: <code>http://localhost:8000</code></li>
       </ol>
-      <p class="hint">Abrir o <code>index.html</code> direto (duplo clique) pode bloquear o <code>fetch()</code> do <code>data.json</code> por segurança do navegador.</p>
+      <p class="hint">Abrir o <code>index.html</code> direto (duplo clique) pode bloquear algumas APIs. Use o servidor local recomendado.</p>
     </section>
   </main>
 
   <footer class="foot">
-    <span>Gerado automaticamente a partir da planilha em 13/01 (arquivo fornecido). Sem servidor e sem banco de dados: só HTML+JS.</span>
+    <span>Sem servidor e sem banco externo: so HTML+JS com IndexedDB.</span>
   </footer>
 
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="db.js"></script>
+  <script src="importer.js"></script>
+  <script src="search.js"></script>
+  <script src="masks.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
