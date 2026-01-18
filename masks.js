@@ -79,6 +79,415 @@ const ABERTURA_RECLAMACOES = {
   'TROCA DE CHIP': 'FAVOR REALIZAR A TROCA DO CHIP DE OPERADO NA LOTEICA',
 };
 
+const ABERTURA_TIPOS = [
+  {value: 'oemp_oi', label: 'MASCARA OEMP OI'},
+  {value: 'mam_sct', label: 'ABERTURA MAM/SCT'},
+  {value: 'wt_telecom', label: 'MASCARA WT TELECOM'},
+  {value: 'ativa', label: 'MASCARA ATIVA'},
+];
+
+const DASH = '—';
+
+function normalizeKey(input){
+  return String(input || '').toLowerCase()
+    .normalize('NFD').replace(/\p{Diacritic}/gu,'')
+    .replace(/[^a-z0-9]+/g,'_')
+    .replace(/^_+|_+$/g,'');
+}
+
+function pickRecordValue(record, keys){
+  if(!record) return '';
+  for(const k of keys){
+    if(record[k] !== undefined && record[k] !== null && String(record[k]).trim() !== '') return String(record[k]).trim();
+  }
+  const normMap = {};
+  for(const k of Object.keys(record)){
+    normMap[normalizeKey(k)] = record[k];
+  }
+  for(const k of keys){
+    const v = normMap[normalizeKey(k)];
+    if(v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+  }
+  return '';
+}
+
+function valueOrDash(value){
+  const v = String(value || '').trim();
+  return v ? v : DASH;
+}
+
+function formatDateTimeMinutes(date){
+  const pad = (x)=> String(x).padStart(2,'0');
+  const dd = pad(date.getDate());
+  const mm = pad(date.getMonth()+1);
+  const yyyy = date.getFullYear();
+  const hh = pad(date.getHours());
+  const mi = pad(date.getMinutes());
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+}
+
+function formatAberturaQueda(raw){
+  if(!raw) return '';
+  const parsed = parseDatePt(raw);
+  if(parsed) return formatDateTimeMinutes(parsed);
+  return String(raw || '').trim();
+}
+
+function getAberturaFields(record, defeito, reclamacao){
+  const municipio = pickRecordValue(record, ['municipio','MUNICIPIO','CIDADE']);
+  const uf = pickRecordValue(record, ['uf','UF','ESTADO']);
+  return {
+    contato: valueOrDash(pickRecordValue(record, ['contato','CONTATO','CONTATO LOCAL','TELEFONE','CONTATO_UL'])),
+    contato_validacao: valueOrDash(pickRecordValue(record, ['contato_validacao','CONTATO VALIDACAO','CONTATO DE VALIDACAO','CONTATO PARA ACOMPANHAR'])),
+    razao_social: valueOrDash(pickRecordValue(record, ['razao_social','RAZAO SOCIAL','RAZÃO SOCIAL','CLIENTE'])),
+    cnpj: valueOrDash(pickRecordValue(record, ['cnpj','CNPJ'])),
+    endereco: valueOrDash(pickRecordValue(record, ['endereco','ENDERECO','ENDERECO UL'])),
+    horario_funcionamento: valueOrDash(pickRecordValue(record, ['horario_funcionamento','HORARIO DE FUNCIONAMENTO'])),
+    designacao_oemp: valueOrDash(pickRecordValue(record, ['designacao_oemp','ccto_oemp','CCTO OEMP','CIRCUITO OEMP','CIRCUITO_OEMP','circuito_oemp'])),
+    nome_ul: valueOrDash(pickRecordValue(record, ['nome_loterica','NOME DA LOTERICA','NOME UL','NOME LOTERICA'])),
+    cod_ul: valueOrDash(pickRecordValue(record, ['cod_ul','COD. UL','CODIGO UL','CODIGO DA UL','Ponto Logico','PONTO LOGICO'])),
+    designacao: valueOrDash(pickRecordValue(record, ['designacao','ccto_oi','CCTO OI','BASE UN','DESIGNACAO','Ponto Logico / Designacao'])),
+    operadora: valueOrDash(pickRecordValue(record, ['operadora','OPERADORA','OPERADORA BACKUP','OPERADORA 4G'])),
+    sim_card: valueOrDash(pickRecordValue(record, ['sim_card','SIM CARD','SIMCARD','CHIP','SIM_CARD'])),
+    modelo_roteador: valueOrDash(pickRecordValue(record, ['modelo_roteador','MODELO ROTEADOR','ROTEADOR','MODELO DO ROTEADOR'])),
+    cep: valueOrDash(pickRecordValue(record, ['cep','CEP'])),
+    municipio_uf: (municipio || uf) ? `${valueOrDash(municipio)} ${valueOrDash(uf)}` : DASH,
+    data_hora_queda: valueOrDash(formatAberturaQueda(pickRecordValue(record, ['data_hora_queda','DATA E HORA DA QUEDA','DATA/HORA QUEDA']))),
+    defeito_reclamado: valueOrDash(defeito),
+    reclamacao_inicial: valueOrDash(reclamacao),
+  };
+}
+
+const templatesAbertura = {
+  oemp_oi(record, defeito, reclamacao){
+    const f = getAberturaFields(record, defeito, reclamacao);
+    return [
+      'MASCARA OEMP OI',
+      '',
+      'NOME SOLICITANTE: CEC CAIXA',
+      `NOME DO CONTATO LOCAL: ${f.contato}`,
+      `RAZÃO SOCIAL: ${f.razao_social}`,
+      `CNPJ: ${f.cnpj}`,
+      `ENDEREÇO: ${f.endereco}`,
+      `HORARIO DE ATENDIMENTO: ${f.horario_funcionamento}`,
+      'AUTORIZAÇÃO DE ACESSO?: SIM',
+      'CHAMADO INTERNO:',
+      `CIRCUITO OEMP: ${f.designacao_oemp}`,
+      `CONTATO PARA ACOMPANHAR: ${f.contato_validacao}`,
+      'ATUALIZAÇÃO: SIM POR VOZ A CADA 1 HORA',
+      `DEFEITO RECLAMADO: ${f.defeito_reclamado}`,
+      `NOME DA UL: ${f.nome_ul}`,
+      `CODIGO UL: ${f.cod_ul}`,
+      `CIRCUITO OI: ${f.designacao}`,
+    ].join('\n');
+  },
+  mam_sct(record, defeito, reclamacao){
+    const f = getAberturaFields(record, defeito, reclamacao);
+    return [
+      'ABERTURA MAM/SCT',
+      '',
+      `CÓDIGO UL: ${f.cod_ul}`,
+      `NOME DA UL: ${f.nome_ul}`,
+      `ENDEREÇO UL: ${f.endereco}`,
+      `CONTATO: ${f.contato}`,
+      `HORARIO DE FUNCIONAMENTO: ${f.horario_funcionamento}`,
+      `DEFEITO RECLAMADO: ${f.defeito_reclamado}`,
+      `OPERADORA: ${f.operadora}`,
+      `SIM CARD: ${f.sim_card}`,
+      `MODELO ROTEADOR: ${f.modelo_roteador}`,
+      `CEP: ${f.cep}`,
+      `MUNICIPIO/ESTADO: ${f.municipio_uf}`,
+      `TROUBLESHOOTING: ${f.reclamacao_inicial}`,
+      `CONTATO DE VALIDAÇÃO: ${f.contato_validacao}`,
+      `HORÁRIO DE ACESSO: ${f.horario_funcionamento}`,
+      'SEGUE LOG:',
+    ].join('\n');
+  },
+  ativa(record, defeito, reclamacao){
+    const f = getAberturaFields(record, defeito, reclamacao);
+    return [
+      'MASCARA ATIVA',
+      '',
+      `DESIGNAÇÃO: ${f.designacao_oemp}`,
+      `COD. UL: ${f.cod_ul}`,
+      `CLIENTE: ${f.razao_social}`,
+      'PROTOCOLO OI:',
+      'TIPO DE SOLICITAÇÃO: ABERTURA',
+      'PROVEDOR: ATIVA',
+      'REINCIDENTE: NÃO',
+      'JÁ ESCALONADO: N1',
+      `DATA E HORA DA QUEDA: ${f.data_hora_queda}`,
+      'REALIZADO TS COM O CLIENTE: SIM',
+      `DEFEITO RECLAMADO: ${f.defeito_reclamado}`,
+      `HORARIO DE FUNCIONAMENTO: ${f.horario_funcionamento}`,
+      `CONTATO LOCAL: ${f.contato}`,
+      `CONTATO DE VALIDAÇÃO: ${f.contato_validacao}`,
+      `RECLAMAÇÃO INICIAL: ${f.reclamacao_inicial}`,
+    ].join('\n');
+  },
+  wt_telecom(record, defeito, reclamacao){
+    const f = getAberturaFields(record, defeito, reclamacao);
+    return [
+      'MASCARA WT TELECOM',
+      '',
+      `DESIGNAÇÃO/VLAN:${f.designacao_oemp}`,
+      `CLIENTE: ${f.nome_ul}`,
+      'CHAMADO INTERNO:',
+      `DEFEITO RECLAMADO: ${f.defeito_reclamado}`,
+      'HORARIO DO INCIDENTE:',
+      `TELEFONE DE CONTATO: ${f.contato}`,
+      'NOME DO SOLICITANTE:',
+      `CIRCUITO OI: ${f.designacao}`,
+    ].join('\n');
+  },
+};
+
+function normalizeHorario(value){
+  const raw = String(value || '').trim();
+  if(!raw) return DASH;
+  const m = raw.match(/(\d{1,2})(?::|h)?(\d{2})?\s*(?:a|as|às|-)\s*(\d{1,2})(?::|h)?(\d{2})?/i);
+  if(m){
+    const h1 = m[1].padStart(2,'0');
+    const h2 = m[3].padStart(2,'0');
+    const m1 = (m[2] || '00').padStart(2,'0');
+    const m2 = (m[4] || '00').padStart(2,'0');
+    return `${h1}:${m1} as ${h2}:${m2}`;
+  }
+  return raw;
+}
+
+function getFieldRawValue(record, key){
+  if(!record || typeof getField !== 'function') return '';
+  const value = getField(record, key);
+  if(!value || value === 'ƒ?"' || value === DASH) return '';
+  return String(value).trim();
+}
+
+function getFieldValue(record, key){
+  return valueOrDash(getFieldRawValue(record, key));
+}
+
+function getDesignacaoOi(record){
+  const fallback = getFieldRawValue(record, 'designacao_nova')
+    || getFieldRawValue(record, 'designacao_atual_antiga')
+    || getFieldRawValue(record, 'designacao')
+    || getFieldRawValue(record, 'ccto');
+  return valueOrDash(fallback);
+}
+
+function getDesignacaoOemp(record){
+  const circuitoOemp = getFieldRawValue(record, 'circuito_oemp');
+  if(circuitoOemp) return circuitoOemp;
+  return getDesignacaoOi(record);
+}
+
+function buildMascaraOempOi(record, defeito){
+  return [
+    'MASCARA OEMP OI',
+    '',
+    'NOME SOLICITANTE: CEC CAIXA',
+    `NOME DO CONTATO LOCAL: ${getFieldValue(record, 'contato')}`,
+    `RAZÃO SOCIAL: ${getFieldValue(record, 'razao_social')}`,
+    `CNPJ: ${getFieldValue(record, 'cnpj')}`,
+    `ENDEREÇO: ${getFieldValue(record, 'endereco')}`,
+    `HORARIO DE ATENDIMENTO: ${normalizeHorario(getFieldRawValue(record, 'horario_funcionamento'))}`,
+    'AUTORIZAÇÃO DE ACESSO?: SIM',
+    'CHAMADO INTERNO:',
+    `CIRCUITO OEMP: ${getFieldValue(record, 'circuito_oemp')}`,
+    `CONTATO PARA ACOMPANHAR: ${getFieldValue(record, 'contato_validacao')}`,
+    'ATUALIZAÇÃO: SIM POR VOZ A CADA 1 HORA',
+    `DEFEITO RECLAMADO: ${valueOrDash(defeito)}`,
+    `NOME DA UL: ${getFieldValue(record, 'nome_ul')}`,
+    `CODIGO UL: ${getFieldValue(record, 'cod_ul')}`,
+    `CIRCUITO OI: ${getDesignacaoOi(record)}`,
+  ].join('\n');
+}
+
+function buildMascaraMamSct(record, defeito, reclamacao){
+  const municipio = getFieldRawValue(record, 'municipio');
+  const uf = getFieldRawValue(record, 'uf');
+  return [
+    'ABERTURA MAM/SCT',
+    '',
+    `CÓDIGO UL: ${getFieldValue(record, 'cod_ul')}`,
+    `NOME DA UL: ${getFieldValue(record, 'nome_ul')}`,
+    `ENDEREÇO UL: ${getFieldValue(record, 'endereco')}`,
+    `CONTATO: ${getFieldValue(record, 'contato')}`,
+    `HORARIO DE FUNCIONAMENTO: ${normalizeHorario(getFieldRawValue(record, 'horario_funcionamento'))}`,
+    `DEFEITO RECLAMADO: ${valueOrDash(defeito)}`,
+    `OPERADORA: ${getFieldValue(record, 'operadora_4g')}`,
+    `SIM CARD: ${getFieldValue(record, 'sim_card')}`,
+    `MODELO ROTEADOR: ${getFieldValue(record, 'modelo_roteador')}`,
+    `CEP: ${getFieldValue(record, 'cep')}`,
+    `MUNICIPIO/ESTADO: ${valueOrDash(municipio)}/${valueOrDash(uf)}`,
+    `TROUBLESHOOTING: ${valueOrDash(reclamacao)}`,
+    `CONTATO DE VALIDAÇÃO: ${getFieldValue(record, 'contato_validacao')}`,
+    `HORÁRIO DE ACESSO: ${normalizeHorario(getFieldRawValue(record, 'horario_funcionamento'))}`,
+    'SEGUE LOG:',
+  ].join('\n');
+}
+
+function buildMascaraWtTelecom(record, defeito){
+  return [
+    'MASCARA WT TELECOM',
+    '',
+    'Designação/VLAN:',
+    `Cliente: ${getFieldValue(record, 'nome_ul')}`,
+    'Chamado interno:',
+    `Defeito reclamado: ${valueOrDash(defeito)}`,
+    'Horario do incidente:',
+    `Telefone de contato: ${getFieldValue(record, 'contato')}`,
+    'Nome do solicitante:',
+    `Circuito OI: ${getDesignacaoOi(record)}`,
+  ].join('\n');
+}
+
+function buildMascaraAtiva(record, defeito, reclamacao){
+  const quedaRaw = getFieldRawValue(record, 'data_hora_queda');
+  const queda = quedaRaw ? formatAberturaQueda(quedaRaw) : DASH;
+  return [
+    'MASCARA ATIVA',
+    '',
+    `DESIGNAÇÃO: ${getDesignacaoOemp(record)}`,
+    `COD. UL: ${getFieldValue(record, 'cod_ul')}`,
+    `CLIENTE: ${getFieldValue(record, 'razao_social')}`,
+    'PROTOCOLO OI:',
+    'TIPO DE SOLICITAÇÃO: ABERTURA',
+    'PROVEDOR: NÃO OEMP',
+    'REINCIDENTE: NÃO',
+    'JÁ ESCALONADO: N1',
+    `DATA E HORA DA QUEDA: ${queda}`,
+    'REALIZADO TS COM O CLIENTE: SIM',
+    `DEFEITO RECLAMADO: ${valueOrDash(defeito)}`,
+    `HORARIO DE FUNCIONAMENTO: ${normalizeHorario(getFieldRawValue(record, 'horario_funcionamento'))}`,
+    `CONTATO LOCAL: ${getFieldValue(record, 'contato')}`,
+    `CONTATO DE VALIDAÇÃO: ${getFieldValue(record, 'contato_validacao')}`,
+    `RECLAMAÇÃO INICIAL: ${valueOrDash(reclamacao)}`,
+  ].join('\n');
+}
+
+const DASH_SAFE = '—';
+
+function valueOrDashSafe(value){
+  const v = String(value || '').trim();
+  return v ? v : DASH_SAFE;
+}
+
+function getFieldRawSafe(record, key){
+  if(!record || typeof getField !== 'function') return '';
+  const value = getField(record, key);
+  if(!value || value === 'ƒ?"' || value === DASH_SAFE) return '';
+  return String(value).trim();
+}
+
+function getFieldValueSafe(record, key){
+  return valueOrDashSafe(getFieldRawSafe(record, key));
+}
+
+function formatAberturaQuedaSafe(raw){
+  if(!raw) return '';
+  const parsed = parseDatePt(raw);
+  if(parsed) return formatDateTimeMinutes(parsed);
+  return String(raw || '').trim();
+}
+
+function getDesignacao(record){
+  const circuitoOemp = getFieldRawSafe(record, 'circuito_oemp');
+  if(circuitoOemp) return circuitoOemp;
+  const fallback = getFieldRawSafe(record, 'designacao_nova')
+    || getFieldRawSafe(record, 'designacao_atual_antiga')
+    || getFieldRawSafe(record, 'designacao')
+    || getFieldRawSafe(record, 'ccto');
+  return valueOrDashSafe(fallback);
+}
+
+templatesAbertura.oemp_oi = function(record, defeito){
+  return [
+    'MASCARA OEMP OI',
+    '',
+    'NOME SOLICITANTE: CEC CAIXA',
+    `NOME DO CONTATO LOCAL: ${getFieldValueSafe(record, 'contato')}`,
+    `RAZÃO SOCIAL: ${getFieldValueSafe(record, 'razao_social')}`,
+    `CNPJ: ${getFieldValueSafe(record, 'cnpj')}`,
+    `ENDEREÇO: ${getFieldValueSafe(record, 'endereco')}`,
+    `HORARIO DE ATENDIMENTO: ${getFieldValueSafe(record, 'horario_funcionamento')}`,
+    'AUTORIZAÇÃO DE ACESSO?: SIM',
+    'CHAMADO INTERNO:',
+    `CIRCUITO OEMP: ${getFieldValueSafe(record, 'circuito_oemp')}`,
+    `CONTATO PARA ACOMPANHAR: ${getFieldValueSafe(record, 'contato_validacao')}`,
+    'ATUALIZAÇÃO: SIM POR VOZ A CADA 1 HORA',
+    `DEFEITO RECLAMADO: ${valueOrDashSafe(defeito)}`,
+    `NOME DA UL: ${getFieldValueSafe(record, 'nome_ul')}`,
+    `CODIGO UL: ${getFieldValueSafe(record, 'cod_ul')}`,
+    `CIRCUITO OI: ${getDesignacao(record)}`,
+  ].join('\n');
+};
+
+templatesAbertura.mam_sct = function(record, defeito, reclamacao){
+  const municipio = getFieldRawSafe(record, 'municipio');
+  const uf = getFieldRawSafe(record, 'uf');
+  return [
+    'ABERTURA MAM/SCT',
+    '',
+    `CÓDIGO UL: ${getFieldValueSafe(record, 'cod_ul')}`,
+    `NOME DA UL: ${getFieldValueSafe(record, 'nome_ul')}`,
+    `ENDEREÇO UL: ${getFieldValueSafe(record, 'endereco')}`,
+    `CONTATO: ${getFieldValueSafe(record, 'contato')}`,
+    `HORARIO DE FUNCIONAMENTO: ${getFieldValueSafe(record, 'horario_funcionamento')}`,
+    `DEFEITO RECLAMADO: ${valueOrDashSafe(defeito)}`,
+    `OPERADORA: ${getFieldValueSafe(record, 'operadora')}`,
+    `SIM CARD: ${getFieldValueSafe(record, 'sim_card')}`,
+    `MODELO ROTEADOR: ${getFieldValueSafe(record, 'modelo_roteador')}`,
+    `CEP: ${getFieldValueSafe(record, 'cep')}`,
+    `MUNICIPIO/ESTADO: ${valueOrDashSafe(municipio)}/${valueOrDashSafe(uf)}`,
+    `TROUBLESHOOTING: ${valueOrDashSafe(reclamacao)}`,
+    `CONTATO DE VALIDAÇÃO: ${getFieldValueSafe(record, 'contato_validacao')}`,
+    `HORÁRIO DE ACESSO: ${getFieldValueSafe(record, 'horario_funcionamento')}`,
+    'SEGUE LOG:',
+  ].join('\n');
+};
+
+templatesAbertura.ativa = function(record, defeito, reclamacao){
+  const cliente = getFieldRawSafe(record, 'razao_social') || getFieldRawSafe(record, 'cliente');
+  const provedor = getFieldRawSafe(record, 'provedor') || 'NÃO OEMP';
+  const quedaRaw = getFieldRawSafe(record, 'data_hora_queda');
+  const queda = quedaRaw ? formatAberturaQuedaSafe(quedaRaw) : DASH_SAFE;
+  return [
+    'MASCARA ATIVA',
+    '',
+    `DESIGNAÇÃO: ${getDesignacao(record)}`,
+    `COD. UL: ${getFieldValueSafe(record, 'cod_ul')}`,
+    `CLIENTE: ${valueOrDashSafe(cliente)}`,
+    'PROTOCOLO OI:',
+    'TIPO DE SOLICITAÇÃO: ABERTURA',
+    `PROVEDOR: ${provedor}`,
+    'REINCIDENTE: NÃO',
+    'JÁ ESCALONADO: N1',
+    `DATA E HORA DA QUEDA: ${queda}`,
+    'REALIZADO TS COM O CLIENTE: SIM',
+    `DEFEITO RECLAMADO: ${valueOrDashSafe(defeito)}`,
+    `HORARIO DE FUNCIONAMENTO: ${getFieldValueSafe(record, 'horario_funcionamento')}`,
+    `CONTATO LOCAL: ${getFieldValueSafe(record, 'contato')}`,
+    `CONTATO DE VALIDAÇÃO: ${getFieldValueSafe(record, 'contato_validacao')}`,
+    `RECLAMAÇÃO INICIAL: ${valueOrDashSafe(reclamacao)}`,
+  ].join('\n');
+};
+
+templatesAbertura.wt_telecom = function(record, defeito){
+  return [
+    'MASCARA WT TELECOM',
+    '',
+    `DESIGNAÇÃO/VLAN: ${getDesignacao(record)}`,
+    `CLIENTE: ${getFieldValueSafe(record, 'nome_ul')}`,
+    'CHAMADO INTERNO:',
+    `DEFEITO RECLAMADO: ${valueOrDashSafe(defeito)}`,
+    'HORARIO DO INCIDENTE:',
+    `TELEFONE DE CONTATO: ${getFieldValueSafe(record, 'contato')}`,
+    'NOME DO SOLICITANTE:',
+    `CIRCUITO OI: ${getDesignacao(record)}`,
+  ].join('\n');
+};
+
 function resolveMaskValue(record, key, observacao){
   if(key === 'observacao') return observacao || '';
   return record && record[key] ? record[key] : '';

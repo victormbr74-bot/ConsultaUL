@@ -17,10 +17,9 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,s
 .search-controls{display:flex;gap:8px;align-items:center}
 input#q{flex:1;padding:12px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none}
 input#ulCode{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none;margin-bottom:8px}
-select#maskTemplate{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none;margin-bottom:8px}
-select#encFalha,select#encCausa{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none}
+select.form-select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none;font:inherit}
+select.form-select#aberturaTipoSelect{margin-bottom:8px}
 input#encContatoNome,input#encContatoTel,input#encQueda,input#encTempo,input#encNormalizacao{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none}
-select#abDefeito{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none}
 input#xlsxUrl{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:var(--text);outline:none;margin-bottom:8px}
 input[type="file"]{display:block;margin:6px 0 10px;color:var(--muted)}
 button{padding:11px 12px;border-radius:12px;border:1px solid rgba(96,165,250,.35);background:rgba(96,165,250,.18);color:var(--text);cursor:pointer}
@@ -52,7 +51,7 @@ button.ghost:hover{background:rgba(255,255,255,.06)}
 .cmd .row{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .cmd button{padding:6px 8px;font-size:12px;border-radius:10px}
 .mask-actions{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-textarea#maskText{width:100%;min-height:420px;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:14px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12.5px;line-height:1.35;resize:vertical}
+pre#maskText{width:100%;min-height:420px;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:14px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12.5px;line-height:1.35;white-space:pre-wrap;word-break:break-word}
 textarea#ulJson{width:100%;min-height:220px;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:14px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12.5px;line-height:1.35;resize:vertical}
 textarea#maskObs{width:100%;min-height:90px;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:14px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12.5px;line-height:1.35;resize:vertical;margin-bottom:10px}
 textarea#abReclamacao{width:100%;min-height:120px;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:14px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12.5px;line-height:1.35;resize:vertical;margin-bottom:10px}

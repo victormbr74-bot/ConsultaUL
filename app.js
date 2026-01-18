@@ -16,6 +16,7 @@ const META_ABERTURA_STATE = 'abertura_min_state';
 const META_ENCERRAMENTO_STATE = 'encerramento_min_state';
 
 const STORAGE_LAST_QUERY = 'last_query';
+const STORAGE_ABERTURA_TIPO = 'abertura_tipo';
 const STORAGE_ABERTURA_DEFECT = 'abertura_defeito';
 const STORAGE_ABERTURA_RECLAMACAO = 'abertura_reclamacao';
 const STORAGE_ABERTURA_EDITED = 'abertura_editada';
@@ -31,6 +32,14 @@ const STORAGE_CUSTOM_CAUSES = 'customCauses';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls) => { const n=document.createElement(tag); if(cls) n.className=cls; return n; };
+
+function setMaskText(text){
+  $('#maskText').textContent = text || '';
+}
+
+function getMaskText(){
+  return $('#maskText').textContent || '';
+}
 
 function pickField(r, keys){
   for(const k of keys){
@@ -115,7 +124,10 @@ function setMaskSubtab(tab){
   $('#view-mask-abertura').classList.toggle('hidden', tab !== 'abertura');
   $('#view-mask-encerramento').classList.toggle('hidden', tab !== 'encerramento');
   setMaskWarning();
-  if(tab === 'abertura') refreshAberturaMinimal();
+  if(tab === 'abertura'){
+    populateAberturaTiposSelect();
+    requestAnimationFrame(refreshAbertura);
+  }
   if(tab === 'encerramento'){
     prefillEncQuedaFromRecord();
     refreshEncerramentoMinimal();
@@ -154,6 +166,24 @@ function populateAberturaDefeitos(){
   if(!sel.value && sel.options.length) sel.value = sel.options[0].value;
 }
 
+function populateAberturaTiposSelect(){
+  const sel = document.getElementById('aberturaTipoSelect');
+  if(!sel) return;
+  if(typeof ABERTURA_TIPOS === 'undefined' || !Array.isArray(ABERTURA_TIPOS)) return;
+  const current = sel.value;
+  sel.innerHTML = '';
+  for(const t of ABERTURA_TIPOS){
+    const opt = el('option');
+    opt.value = t.value;
+    opt.textContent = t.label;
+    sel.appendChild(opt);
+  }
+  const saved = localStorage.getItem(STORAGE_ABERTURA_TIPO) || 'oemp_oi';
+  const prefer = current || saved;
+  const exists = ABERTURA_TIPOS.some((t)=> t.value === prefer);
+  sel.value = exists ? prefer : 'oemp_oi';
+}
+
 function ensureAberturaReclamacaoDefault(force){
   const defeito = $('#abDefeito').value;
   const padrao = getReclamacaoPadrao(defeito);
@@ -181,9 +211,8 @@ function getAberturaAutoFields(record){
 }
 
 function getAberturaPayload(){
-  const auto = getAberturaAutoFields(CURRENT);
   return {
-    ...auto,
+    record: CURRENT,
     defeito_reclamado: $('#abDefeito').value || '',
     reclamacao_inicial: $('#abReclamacao').value || '',
   };
@@ -191,10 +220,12 @@ function getAberturaPayload(){
 
 function saveAberturaState(){
   const state = {
+    tipo: $('#aberturaTipoSelect').value || '',
     defeito: $('#abDefeito').value || '',
     reclamacao: $('#abReclamacao').value || '',
     edited: ABERTURA_EDITED,
   };
+  localStorage.setItem(STORAGE_ABERTURA_TIPO, state.tipo);
   localStorage.setItem(STORAGE_ABERTURA_DEFECT, state.defeito);
   localStorage.setItem(STORAGE_ABERTURA_RECLAMACAO, state.reclamacao);
   localStorage.setItem(STORAGE_ABERTURA_EDITED, state.edited ? '1' : '0');
@@ -203,15 +234,36 @@ function saveAberturaState(){
 
 function applyAberturaState(state){
   if(!state) return;
+  if(state.tipo) $('#aberturaTipoSelect').value = state.tipo;
   if(state.defeito) $('#abDefeito').value = state.defeito;
   if(state.reclamacao) $('#abReclamacao').value = state.reclamacao;
   ABERTURA_EDITED = !!state.edited;
 }
 
-function refreshAberturaMinimal(){
+function refreshAbertura(){
+  if(!document.getElementById('aberturaTipoSelect')) return;
+  populateAberturaTiposSelect();
   if(!$('#abDefeito').value) populateAberturaDefeitos();
   const payload = getAberturaPayload();
-  $('#maskText').value = buildAberturaMinimalText(payload);
+  const templateId = $('#aberturaTipoSelect').value || (ABERTURA_TIPOS[0] ? ABERTURA_TIPOS[0].value : '');
+  let text = '';
+  switch(templateId){
+    case 'oemp_oi':
+      text = buildMascaraOempOi(payload.record, payload.defeito_reclamado, payload.reclamacao_inicial);
+      break;
+    case 'mam_sct':
+      text = buildMascaraMamSct(payload.record, payload.defeito_reclamado, payload.reclamacao_inicial);
+      break;
+    case 'ativa':
+      text = buildMascaraAtiva(payload.record, payload.defeito_reclamado, payload.reclamacao_inicial);
+      break;
+    case 'wt_telecom':
+      text = buildMascaraWtTelecom(payload.record, payload.defeito_reclamado, payload.reclamacao_inicial);
+      break;
+    default:
+      text = '';
+  }
+  setMaskText(text);
   saveAberturaState();
 }
 
@@ -311,7 +363,7 @@ function applyEncerramentoState(state){
 function refreshEncerramentoMinimal(){
   if(!$('#encFalha').value) populateEncerramentoOptions();
   const payload = getEncerramentoPayload();
-  $('#maskText').value = buildEncerramentoText(payload);
+  setMaskText(buildEncerramentoText(payload));
   saveEncerramentoState();
 }
 
@@ -512,7 +564,7 @@ function selectRecord(code){
   renderConsulta(r);
   setMaskWarning();
   prefillEncQuedaFromRecord();
-  if(MASK_SUBTAB === 'abertura') refreshAberturaMinimal();
+  if(MASK_SUBTAB === 'abertura') refreshAbertura();
   if(MASK_SUBTAB === 'encerramento') refreshEncerramentoMinimal();
   $('#results').innerHTML = `<div class="hint">Registro selecionado: <code>${code}</code></div>`;
   activateTab('consulta');
@@ -562,13 +614,15 @@ async function loadFromIndexedDB(){
 
   populateEncerramentoOptions();
   populateAberturaDefeitos();
+  populateAberturaTiposSelect();
   if(aberturaState){
     applyAberturaState(aberturaState);
   } else {
+    const tipo = localStorage.getItem(STORAGE_ABERTURA_TIPO);
     const defect = localStorage.getItem(STORAGE_ABERTURA_DEFECT);
     const reclamacao = localStorage.getItem(STORAGE_ABERTURA_RECLAMACAO);
     const edited = localStorage.getItem(STORAGE_ABERTURA_EDITED) === '1';
-    if(defect || reclamacao) applyAberturaState({defeito: defect, reclamacao, edited});
+    if(tipo || defect || reclamacao) applyAberturaState({tipo, defeito: defect, reclamacao, edited});
   }
   if(encerramentoState){
     applyEncerramentoState(encerramentoState);
@@ -589,7 +643,7 @@ async function loadFromIndexedDB(){
   renderConsulta(null);
 
   ['#kv-loterica','#kv-principal','#kv-backup','#cmds'].forEach(sel=>$(sel).innerHTML='');
-  $('#maskText').value = '';
+  setMaskText('');
 
   if(importInfo){
     const lines = [
@@ -627,9 +681,9 @@ async function wireUI(){
     $('#results').innerHTML='';
     CURRENT=null;
     ['#kv-loterica','#kv-principal','#kv-backup','#cmds'].forEach(sel=>$(sel).innerHTML='');
-    $('#maskText').value='';
+    setMaskText('');
     setMaskWarning();
-    if(MASK_SUBTAB === 'abertura') refreshAberturaMinimal();
+    if(MASK_SUBTAB === 'abertura') refreshAbertura();
     if(MASK_SUBTAB === 'encerramento') refreshEncerramentoMinimal();
     renderConsulta(null);
   });
@@ -639,17 +693,22 @@ async function wireUI(){
   document.querySelectorAll('.subtab').forEach(b=>b.addEventListener('click', ()=>setMaskSubtab(b.dataset.subtab)));
 
 
+  $('#aberturaTipoSelect').addEventListener('change', ()=>{
+    localStorage.setItem(STORAGE_ABERTURA_TIPO, $('#aberturaTipoSelect').value || 'oemp_oi');
+    refreshAbertura();
+  });
+
   $('#abDefeito').addEventListener('change', ()=>{
     if(!ABERTURA_EDITED) ensureAberturaReclamacaoDefault(true);
-    refreshAberturaMinimal();
+    refreshAbertura();
   });
   $('#abReclamacao').addEventListener('input', ()=>{
     ABERTURA_EDITED = true;
-    refreshAberturaMinimal();
+    refreshAbertura();
   });
   $('#btnRestaurarReclamacao').addEventListener('click', ()=>{
     ensureAberturaReclamacaoDefault(true);
-    refreshAberturaMinimal();
+    refreshAbertura();
   });
 
   $('#btnAddCausa').addEventListener('click', async ()=>{
@@ -683,7 +742,7 @@ async function wireUI(){
   $('#encNormalizacao').addEventListener('input', refreshEncerramentoMinimal);
 
   $('#btnCopiarAbertura').addEventListener('click', async ()=>{
-    const t = $('#maskText').value;
+    const t = getMaskText();
     try{
       await navigator.clipboard.writeText(t);
       $('#abStatus').textContent='Copiado.';
@@ -694,13 +753,14 @@ async function wireUI(){
   });
 
   $('#btnDownloadAbertura').addEventListener('click', ()=>{
-    const text = $('#maskText').value;
+    const text = getMaskText();
     if(!text) return;
     const now = new Date();
     const pad = (x)=> String(x).padStart(2,'0');
     const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     const code = CURRENT ? (getRecordCode(CURRENT) || 'sem_codigo') : 'sem_codigo';
-    const filename = `abertura_${code}_${stamp}.txt`;
+    const typeId = $('#aberturaTipoSelect').value || 'tipo';
+    const filename = `abertura_${typeId}_${code}.txt`;
     const blob = new Blob([text], {type:'text/plain'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -712,13 +772,14 @@ async function wireUI(){
 
   $('#btnLimparAbertura').addEventListener('click', ()=>{
     ABERTURA_EDITED = false;
+    populateAberturaTiposSelect();
     populateAberturaDefeitos();
     ensureAberturaReclamacaoDefault(true);
-    refreshAberturaMinimal();
+    refreshAbertura();
   });
 
   $('#btnCopiarEncerramento').addEventListener('click', async ()=>{
-    const t = $('#maskText').value;
+    const t = getMaskText();
     try{
       await navigator.clipboard.writeText(t);
       $('#encStatus').textContent='Copiado.';
@@ -729,7 +790,7 @@ async function wireUI(){
   });
 
   $('#btnDownloadEncerramento').addEventListener('click', ()=>{
-    const text = $('#maskText').value;
+    const text = getMaskText();
     if(!text) return;
     const now = new Date();
     const pad = (x)=> String(x).padStart(2,'0');
@@ -903,7 +964,7 @@ async function wireUI(){
     CURRENT = record;
     renderConsulta(record);
     prefillEncQuedaFromRecord();
-    if(MASK_SUBTAB === 'abertura') refreshAberturaMinimal();
+    if(MASK_SUBTAB === 'abertura') refreshAbertura();
     if(MASK_SUBTAB === 'encerramento') refreshEncerramentoMinimal();
     setStatus('#ulStatus', [`Registro ${code} salvo.`]);
   });
@@ -919,7 +980,7 @@ async function wireUI(){
     if(CURRENT && getRecordCode(CURRENT) === code){
       CURRENT = null;
       ['#kv-loterica','#kv-principal','#kv-backup','#cmds'].forEach(sel=>$(sel).innerHTML='');
-      $('#maskText').value='';
+      setMaskText('');
       renderConsulta(null);
     }
     setStatus('#ulStatus', [`Registro ${code} excluido.`]);

@@ -69,10 +69,19 @@
           <div id="maskWarning" class="hint">Faça uma consulta ou importe base para preencher automaticamente.</div>
 
           <div id="view-mask-abertura" class="subview">
+            <div>
+              <label class="label" for="aberturaTipoSelect">Tipo de máscara de abertura</label>
+              <select id="aberturaTipoSelect" class="form-select">
+                <option value="oemp_oi">MASCARA OEMP OI</option>
+                <option value="mam_sct">ABERTURA MAM/SCT</option>
+                <option value="wt_telecom">MASCARA WT TELECOM</option>
+                <option value="ativa">MASCARA ATIVA</option>
+              </select>
+            </div>
             <div class="field-row">
               <div class="grow">
                 <label class="label" for="abDefeito">Defeito reclamado</label>
-                <select id="abDefeito"></select>
+                <select id="abDefeito" class="form-select"></select>
               </div>
               <div class="compact">
                 <label class="label">&nbsp;</label>
@@ -95,11 +104,11 @@
             <div class="field-row">
               <div>
                 <label class="label" for="encFalha">Falha</label>
-                <select id="encFalha"></select>
+                <select id="encFalha" class="form-select"></select>
               </div>
               <div class="grow">
                 <label class="label" for="encCausa">Causa/Solução</label>
-                <select id="encCausa"></select>
+                <select id="encCausa" class="form-select"></select>
               </div>
               <div class="compact">
                 <label class="label">&nbsp;</label>
@@ -154,7 +163,7 @@
           <div class="mask-actions">
             <span id="copystatus" class="hint"></span>
           </div>
-          <textarea id="maskText" spellcheck="false"></textarea>
+          <pre id="maskText" class="mask-preview"></pre>
           <p class="hint">Previa do texto gerado. Copie ou baixe em TXT.</p>
         </div>
       </div>
@@ -216,8 +225,8 @@
   <script src="db.js"></script>
   <script src="importer.js"></script>
   <script src="search.js"></script>
-  <script src="masks.js"></script>
   <script src="fields.js"></script>
+  <script src="masks.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

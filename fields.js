@@ -40,6 +40,18 @@ const fieldMap = {
 
   endereco: ['ENDERECO','ENDERECO UL','endereco'],
   horario_funcionamento: ['HORARIO DE FUNCIONAMENTO','horario_funcionamento'],
+  razao_social: ['RAZAO SOCIAL','RAZÃO SOCIAL','RAZAO_SOCIAL','RAZAO_SOCIAL_LOTERICA','CLIENTE','CLIENTE/RAZAO SOCIAL','razao_social'],
+  cnpj: ['CNPJ','cnpj'],
+  municipio: ['MUNICIPIO','MUNICÍPIO','CIDADE','municipio'],
+  contato_validacao: ['CONTATO VALIDACAO','CONTATO DE VALIDACAO','CONTATO PARA ACOMPANHAR','CONTATO VALIDAÇÃO','contato_validacao'],
+  operadora: ['OPERADORA','OPERADORA BACKUP','OPERADORA 4G','operadora'],
+  sim_card: ['SIM CARD','SIMCARD','CHIP','SIM_CARD','sim_card'],
+  modelo_roteador: ['MODELO ROTEADOR','MODELO DO ROTEADOR','ROTEADOR','modelo_roteador'],
+  cep: ['CEP','cep'],
+  provedor: ['PROVEDOR','provedor'],
+  designacao: ['DESIGNACAO','DESIGNAÇÃO','CCTO OI','ccto_oi','designacao'],
+  ccto: ['CCTO','CCTO OI','ccto','ccto_oi'],
+  cliente: ['CLIENTE','cliente'],
 };
 
 function normalizeFieldKey(input){
