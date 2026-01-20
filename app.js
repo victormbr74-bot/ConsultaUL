@@ -29,6 +29,10 @@ const STORAGE_ENC_TEMPO = 'enc_tempo';
 const STORAGE_ENC_QUEDA = 'enc_queda';
 const STORAGE_ENC_NORM = 'enc_norm';
 const STORAGE_CUSTOM_CAUSES = 'customCauses';
+const AUTO_BASE_URL = './base.xlsx';
+const AUTO_BASE_WARNING = 'Base automática não encontrada. Use Importar XLSX.';
+const AUTO_LAST_UPDATE_EMPTY = 'Última atualização: nunca';
+let AUTO_LOAD_IN_PROGRESS = false;
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls) => { const n=document.createElement(tag); if(cls) n.className=cls; return n; };
@@ -62,6 +66,12 @@ function setStatus(target, lines){
   }
 }
 
+function setAutoLoadWarning(text){
+  const note = $('#autoLoadNote');
+  if(!note) return;
+  note.textContent = text || '';
+}
+
 function setResultsHint(text){
   $('#results').innerHTML = `<div class="hint">${text}</div>`;
 }
@@ -78,6 +88,62 @@ function formatDateTimeMinutes(date){
   const hh = pad(date.getHours());
   const mi = pad(date.getMinutes());
   return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+}
+
+function safeNumber(value){
+  return typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+}
+
+function formatSourceLabel(source){
+  if(source === 'site') return 'XLSX do site';
+  if(source === 'upload') return 'Upload local';
+  return 'Importação manual';
+}
+
+function formatList(list){
+  if(Array.isArray(list) && list.length) return list.join(', ');
+  return '-';
+}
+
+function buildImportReportLines(report){
+  if(!report) return ['Nenhuma base importada.'];
+  const importedAtLabel = report.importedAt && !Number.isNaN(new Date(report.importedAt).getTime())
+    ? formatDateTimeMinutes(new Date(report.importedAt))
+    : '-';
+  const lines = [
+    `Arquivo: ${report.fileName || '-'}`,
+    `Importado em: ${importedAtLabel}`,
+    `Fonte: ${formatSourceLabel(report.source)}`,
+    `Total de linhas: ${safeNumber(report.totalLines)}`,
+    `Registros validos: ${safeNumber(report.validRecords)}`,
+    `Ignorados (sem cod_ul): ${safeNumber(report.ignored)}`,
+    `Aba principal: ${report.primarySheet || '-'}`,
+    `Abas encontradas: ${formatList(report.sheetsFound)}`,
+    `Campos finais: ${formatList(report.fields)}`,
+    `Conflitos: ${safeNumber(report.conflicts)}`,
+  ];
+  if(report.importedAt){
+    const parsed = new Date(report.importedAt);
+    if(!Number.isNaN(parsed.getTime())){
+      const suffix = report.source === 'site' ? ' (base.xlsx)' : '';
+      lines.push(`Última atualização: ${formatDateTimeMinutes(parsed)}${suffix}`);
+    }
+  }
+  return lines;
+}
+
+function updateLastUpdateLabel(importInfo){
+  const label = $('#lastUpdateInfo');
+  if(!label) return;
+  if(importInfo && importInfo.importedAt){
+    const date = new Date(importInfo.importedAt);
+    if(!Number.isNaN(date.getTime())){
+      const suffix = importInfo.source === 'site' ? ' (base.xlsx)' : '';
+      label.textContent = `Última atualização: ${formatDateTimeMinutes(date)}${suffix}`;
+      return;
+    }
+  }
+  label.textContent = AUTO_LAST_UPDATE_EMPTY;
 }
 
 function resolveSameOriginUrl(input){
@@ -378,6 +444,47 @@ async function applyPostImport(prevCode){
   }
 }
 
+async function autoLoadBaseXlsx(){
+  if(AUTO_LOAD_IN_PROGRESS) return false;
+  AUTO_LOAD_IN_PROGRESS = true;
+  const statusTarget = '#importStatus';
+  setAutoLoadWarning('');
+  setStatus(statusTarget, ['Buscando base.xlsx na raiz do site...']);
+  try{
+    const url = `${AUTO_BASE_URL}?v=${Date.now()}`;
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok){
+      if(res.status === 404){
+        setStatus(statusTarget, [AUTO_BASE_WARNING]);
+        setAutoLoadWarning(AUTO_BASE_WARNING);
+      } else {
+        setStatus(statusTarget, [`Falha ao baixar base.xlsx (HTTP ${res.status}).`]);
+      }
+      return false;
+    }
+    const buffer = await res.arrayBuffer();
+    const prevCode = CURRENT ? getRecordCode(CURRENT) : null;
+    const {records, report} = importXlsxArrayBuffer(buffer, 'base.xlsx');
+    report.source = 'site';
+    report.importedAt = new Date().toISOString();
+    setStatus(statusTarget, ['Salvando...']);
+    await clearRecords(DB);
+    await putManyRecords(DB, records);
+    await setMeta(DB, META_IMPORT, report);
+    await applyPostImport(prevCode);
+    setStatus(statusTarget, buildImportReportLines(report));
+    setAutoLoadWarning('');
+    updateLastUpdateLabel(report);
+    return true;
+  } catch (err){
+    console.error(err);
+    setStatus(statusTarget, ['Erro ao baixar ou importar o XLSX do site.']);
+    return false;
+  } finally {
+    AUTO_LOAD_IN_PROGRESS = false;
+  }
+}
+
 function activateTab(tab){
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   for(const v of VIEWS){
@@ -646,19 +753,11 @@ async function loadFromIndexedDB(){
   setMaskText('');
 
   if(importInfo){
-    const lines = [
-      `Arquivo: ${importInfo.fileName}`,
-      `Importado em: ${importInfo.importedAt}`,
-      `Fonte: ${importInfo.source === 'site' ? 'XLSX do site' : 'Upload local'}`,
-      `Abas: ${importInfo.sheetsFound.join(', ') || '-'}`,
-      `Registros: ${importInfo.validRecords}`,
-      `Ignorados: ${importInfo.ignored}`,
-      `Conflitos: ${importInfo.conflicts}`,
-    ];
-    setStatus('#importStatus', lines);
+    setStatus('#importStatus', buildImportReportLines(importInfo));
   } else {
     setStatus('#importStatus', ['Nenhuma base importada.']);
   }
+  updateLastUpdateLabel(importInfo);
 }
 
 async function wireUI(){
@@ -835,16 +934,9 @@ async function wireUI(){
       await setMeta(DB, META_IMPORT, report);
       await applyPostImport(prevCode);
 
-      const lines = [
-        `Total de linhas: ${report.totalLines}`,
-        `Registros validos: ${report.validRecords}`,
-        `Ignorados (sem cod_ul): ${report.ignored}`,
-        `Aba principal: ${report.primarySheet || '-'}`,
-        `Abas encontradas: ${report.sheetsFound.join(', ') || '-'}`,
-        `Campos finais: ${report.fields.join(', ') || '-'}`,
-        `Conflitos: ${report.conflicts}`,
-      ];
-      setStatus('#importStatus', lines);
+      setStatus('#importStatus', buildImportReportLines(report));
+      setAutoLoadWarning('');
+      updateLastUpdateLabel(report);
     } catch (err){
       console.error(err);
       setStatus('#importStatus', ['Erro ao importar o XLSX. Verifique o arquivo.']);
@@ -878,21 +970,17 @@ async function wireUI(){
       await putManyRecords(DB, records);
       await setMeta(DB, META_IMPORT, report);
       await applyPostImport(prevCode);
-      const lines = [
-        `Total de linhas: ${report.totalLines}`,
-        `Registros validos: ${report.validRecords}`,
-        `Ignorados (sem cod_ul): ${report.ignored}`,
-        `Aba principal: ${report.primarySheet || '-'}`,
-        `Abas encontradas: ${report.sheetsFound.join(', ') || '-'}`,
-        `Campos finais: ${report.fields.join(', ') || '-'}`,
-        `Conflitos: ${report.conflicts}`,
-        `Ultima atualizacao: ${report.importedAt} (XLSX do site)`,
-      ];
-      setStatus('#importStatus', lines);
+      setStatus('#importStatus', buildImportReportLines(report));
+      setAutoLoadWarning('');
+      updateLastUpdateLabel(report);
     } catch (err){
       console.error(err);
       setStatus('#importStatus', ['Erro ao baixar ou importar o XLSX do site.']);
     }
+  });
+
+  $('#btnAutoLoadBase').addEventListener('click', async ()=>{
+    await autoLoadBaseXlsx();
   });
 
   $('#btnClearDb').addEventListener('click', async ()=>{
@@ -903,6 +991,8 @@ async function wireUI(){
     setSearchEnabled(false);
     setResultsHint('Base local apagada. Importe novamente.');
     setStatus('#importStatus', ['Base local apagada.']);
+    setAutoLoadWarning('');
+    updateLastUpdateLabel(null);
   });
 
   $('#btnExportJson').addEventListener('click', async ()=>{
@@ -987,10 +1077,18 @@ async function wireUI(){
   });
 }
 
-(async function main(){
+document.addEventListener('DOMContentLoaded', async ()=>{
   DB = await openDB();
   await wireUI();
   const lastQ = localStorage.getItem(STORAGE_LAST_QUERY);
   if(lastQ) $('#q').value = lastQ;
-  await loadFromIndexedDB();
-})();
+  const existingRecords = await getAllRecords(DB);
+  if(existingRecords.length === 0){
+    const loaded = await autoLoadBaseXlsx();
+    if(!loaded){
+      await loadFromIndexedDB();
+    }
+  } else {
+    await loadFromIndexedDB();
+  }
+});

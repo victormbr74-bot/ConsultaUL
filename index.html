@@ -178,6 +178,11 @@
           <label class="label" for="xlsxUrl">URL do XLSX (site)</label>
           <input id="xlsxUrl" type="text" value="./base.xlsx" />
           <button id="btnUpdateFromSite" class="ghost">Atualizar base (XLSX do site)</button>
+          <div class="actions">
+            <button id="btnAutoLoadBase" class="ghost">Atualizar base (base.xlsx)</button>
+            <span id="autoLoadNote" class="hint"></span>
+          </div>
+          <div id="lastUpdateInfo" class="hint">Última atualização: nunca</div>
           <input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           <div class="actions">
             <button id="btnImportXlsx">Importar XLSX</button>

@@ -30,6 +30,12 @@ GitHub Pages:
 - Publique o repositorio no GitHub Pages e acesse normalmente.
 - Para atualizacao automatica, mantenha `base.xlsx` na raiz do repo publicado.
 
+Base automática:
+- O site verifica o IndexedDB ao carregar e, se nao houver base local, tenta baixar `./base.xlsx?v=timestamp` da raiz do site (sem backend nem interação).
+- O arquivo deve estar no mesmo nivel de `index.html`/`styles.css`, caso contrario aparece o aviso discreto “Base automática não encontrada. Use Importar XLSX.” e o botão manual continua funcionando.
+- Para forçar novo download mesmo com base local, use o botão “Atualizar base (base.xlsx)”.
+- A interface mostra “Última atualização: data/hora” sempre que a base é carregada.
+
 Observacoes:
 - Persistencia principal: IndexedDB (lotericasDB / records / meta)
 - localStorage usado apenas para preferencias (ultima busca, template, observacao)
