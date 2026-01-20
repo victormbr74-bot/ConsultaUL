@@ -22,17 +22,39 @@ const KEY_SYNONYMS = {
   ip_wan: ['ip wan'],
   loopback_wan: ['loopback principal','loopback primario','loopback primario','loopback principal wan'],
   loopback_lan: ['loopback switch','loopback secundario','loopback backup','loopback lan'],
+  designacao_nova: [
+    'designacao nova','designacao_nova','designacao__nova','designacao  nova',
+    'designacao_novo','desig nova','desig_nova','circuito novo','ccto novo'
+  ],
 };
 
 function normalizeKey(raw){
   if(!raw) return '';
-  const text = String(raw).toLowerCase()
+  return String(raw)
+    .toLowerCase()
     .normalize('NFD').replace(/\p{Diacritic}/gu,'')
-    .replace(/[^a-z0-9]+/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
-  return text.replace(/\s+/g,'_');
+    .replace(/[^a-z0-9]+/g,'_')
+    .replace(/_+/g,'_')
+    .replace(/^_+|_+$/g,'');
 }
+
+const COLUMN_ALIAS_MAP = (function(){
+  const aliasGroups = {
+    designacao_nova: [
+      'designacao nova','designacao_nova','designacao__nova','designacao  nova',
+      'designacao_novo','desig nova','desig_nova','circuito novo','ccto novo'
+    ],
+  };
+  const map = {};
+  for(const [canon, list] of Object.entries(aliasGroups)){
+    map[normalizeKey(canon)] = canon;
+    for(const alias of list){
+      const norm = normalizeKey(alias);
+      if(norm) map[norm] = canon;
+    }
+  }
+  return map;
+})();
 
 const SYN_MAP = (function(){
   const map = {};
@@ -45,6 +67,8 @@ const SYN_MAP = (function(){
 
 function canonicalKey(raw){
   const nk = normalizeKey(raw);
+  if(!nk) return '';
+  if(COLUMN_ALIAS_MAP[nk]) return COLUMN_ALIAS_MAP[nk];
   return SYN_MAP[nk] || nk;
 }
 
@@ -97,6 +121,7 @@ function findSheetWithCodUl(workbook){
 
 function mergeRecords(base, extra, stats){
   for(const [k, v] of Object.entries(extra)){
+    if(k === 'designacao_nova' && (!v || String(v).trim() === '')) continue;
     if(v === '') continue;
     if(!base[k]){
       base[k] = v;
@@ -147,10 +172,15 @@ function importXlsxWorkbook(wb, fileName){
 
   const map = new Map();
   const statsAttachment = {conflicts: 0};
+  let firstRowKeysLogged = false;
 
   function loadSheet(name){
     if(!name) return [];
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], {defval:''});
+    if(!firstRowKeysLogged && rows.length){
+      firstRowKeysLogged = true;
+      console.log(`[importer] first raw row keys from ${name || 'sheet'}:`, Object.keys(rows[0] || {}));
+    }
     report.totalLines += rows.length;
     return rows;
   }
@@ -197,6 +227,18 @@ function importXlsxWorkbook(wb, fileName){
     : [];
 
   const records = Array.from(map.values());
+  const filledDesignacao = records.filter((record)=> {
+    const value = record.designacao_nova;
+    return value && String(value).trim() !== '';
+  });
+  console.log(`[importer] designacao_nova filled count: ${filledDesignacao.length}`);
+  if(filledDesignacao.length){
+    const sample = filledDesignacao[0];
+    console.log(`[importer] sample designacao_nova entry:`, {
+      cod_ul: sample.cod_ul || '',
+      designacao_nova: sample.designacao_nova,
+    });
+  }
   return {records, report, templates};
 }
 

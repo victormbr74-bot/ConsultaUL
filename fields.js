@@ -15,7 +15,10 @@ const fieldMap = {
   tipo_ul: ['TIPO DE UL','TIPO_UL','TIPO UL','TIPO LOTERICA','tipo_ul'],
 
   designacao_atual_antiga: ['DESIGNACAO ATUAL OU ANTIGA (SEMPRE CONSULTAR NAS FERRAMENTAS PARA TER MAS ACERTIVA)','DESIGNACAO ATUAL','DESIGNACAO','ccto_oi','base_un'],
-  designacao_nova: ['DESIGNACAO NOVA'],
+  designacao_nova: [
+    'DESIGNACAO NOVA','DESIGNAÇÃO NOVA','DESIGNACAO_NOVA','DESIGNAÇÃO_NOVA',
+    'DESIG NOVA','DESIGNACAO__NOVA','DESIGNACAO  NOVA','CIRCUITO NOVO','CCTO NOVO'
+  ],
   ip_nat: ['IP de NAT','IP NAT','NAT','ip_nat'],
   ip_wan: ['IP WAN','WAN','ip_wan'],
   loopback_primario: ['LOOPBACK PRIMARIO','LOOPBACK PRIMARY','LOOPBACK WAN','LOOPBACK PRINCIPAL','LOOPBACK PRIMARIO','loopback_wan'],

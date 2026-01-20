@@ -549,6 +549,10 @@ function renderConsulta(r){
   }
 
   const val = (key)=> getField(r, key);
+  const rawDesignacaoNova = val('designacao_nova');
+  const designacaoNovaDisplay = (rawDesignacaoNova && rawDesignacaoNova !== 'ƒ?"')
+    ? rawDesignacaoNova
+    : '—';
   const loopP = val('loopback_primario');
   const loopB = val('loopback_backup');
   const ipNat = val('ip_nat');
@@ -581,7 +585,7 @@ function renderConsulta(r){
 
   putKV('#kv-principal', [
     ['DESIGNACAO ATUAL/ANTIGA', val('designacao_atual_antiga')],
-    ['DESIGNACAO NOVA', val('designacao_nova')],
+    ['DESIGNACAO NOVA', designacaoNovaDisplay],
     ['IP de NAT', ipNat],
     ['IP WAN', val('ip_wan')],
     ['LOOPBACK PRIMARIO', loopP],
