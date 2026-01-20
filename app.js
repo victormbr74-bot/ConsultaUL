@@ -76,6 +76,13 @@ function setResultsHint(text){
   $('#results').innerHTML = `<div class="hint">${text}</div>`;
 }
 
+function escapeHtml(text){
+  return String(text || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
 function setSearchEnabled(enabled){
   $('#btnBuscar').disabled = !enabled;
 }
@@ -668,7 +675,7 @@ function prefillEncQuedaFromRecord(){
   }
 }
 
-function selectRecord(code){
+function selectRecord(code, opts = {}){
   if(!INDEX || !INDEX.mapByCodUl.has(code)) return;
   const r = INDEX.mapByCodUl.get(code);
   CURRENT = r;
@@ -677,8 +684,26 @@ function selectRecord(code){
   prefillEncQuedaFromRecord();
   if(MASK_SUBTAB === 'abertura') refreshAbertura();
   if(MASK_SUBTAB === 'encerramento') refreshEncerramentoMinimal();
-  $('#results').innerHTML = `<div class="hint">Registro selecionado: <code>${code}</code></div>`;
+  const feedback = opts.feedback || `Registro selecionado: <code>${code}</code>`;
+  $('#results').innerHTML = `<div class="hint">${feedback}</div>`;
   activateTab('consulta');
+}
+
+function tryAutoSelectFromQuery(query){
+  if(!INDEX || !query || !isLikelyCodUl(query)) return false;
+  const candidates = buildCodUlCandidates(query);
+  for(const code of candidates){
+    if(INDEX.mapByCodUl.has(code)){
+      const record = INDEX.mapByCodUl.get(code);
+      const name = pickField(record, ['nome_loterica','NOME DA LOTERICA','NOME UL']);
+      const safeCode = escapeHtml(code);
+      const safeName = name ? ` - ${escapeHtml(name)}` : '';
+      const message = `Loterica selecionada: <code>${safeCode}</code>${safeName}`;
+      selectRecord(code, {feedback: message});
+      return true;
+    }
+  }
+  return false;
 }
 
 function updateSuggestions(){
@@ -771,9 +796,11 @@ async function wireUI(){
       setResultsHint('Importe o XLSX para comecar.');
       return;
     }
-    const q=$('#q').value;
-    localStorage.setItem(STORAGE_LAST_QUERY, q);
-    renderResults(searchRecords(INDEX, q));
+    const rawQuery = $('#q').value;
+    const normalizedQuery = normalizeQuery(rawQuery);
+    localStorage.setItem(STORAGE_LAST_QUERY, rawQuery);
+    if(tryAutoSelectFromQuery(normalizedQuery)) return;
+    renderResults(searchRecords(INDEX, normalizedQuery));
   });
   $('#q').addEventListener('input', updateSuggestions);
   $('#q').addEventListener('keydown', (e)=>{

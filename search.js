@@ -59,3 +59,31 @@ function getSuggestions(index, query, limit){
   }
   return out;
 }
+
+function normalizeQuery(raw){
+  if(raw === undefined || raw === null) return '';
+  return String(raw)
+    .normalize('NFKC')
+    .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+function isLikelyCodUl(raw){
+  const digits = String(raw || '').replace(/\D/g,'');
+  return digits.length === 9;
+}
+
+function buildCodUlCandidates(raw){
+  const digits = String(raw || '').replace(/\D/g,'');
+  const seen = new Set();
+  const trimmed = String(raw || '').trim();
+  if(trimmed) seen.add(trimmed);
+  if(digits){
+    seen.add(digits);
+    if(digits.length === 9){
+      seen.add(`${digits.slice(0,2)}-${digits.slice(2,8)}-${digits.slice(8)}`);
+    }
+  }
+  return Array.from(seen);
+}
