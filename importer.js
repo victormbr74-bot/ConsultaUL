@@ -24,7 +24,7 @@ const KEY_SYNONYMS = {
   loopback_lan: ['loopback switch','loopback secundario','loopback backup','loopback lan'],
   designacao_nova: [
     'designacao nova','designacao_nova','designacao__nova','designacao  nova',
-    'designacao_novo','desig nova','desig_nova','circuito novo','ccto novo'
+    'designacao_novo','desig nova','desig_nova','circuito novo','ccto novo', 'BASE UN', 'designação nova'
   ],
 };
 
