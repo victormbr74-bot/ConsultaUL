@@ -580,8 +580,7 @@ function renderConsulta(r){
     ['NOME UL', val('nome_ul')],
     ['STATUS', val('status')],
     ['CONTATO', val('contato')],
-    ['UF', val('uf', 'regiao')],
-	['PERIMETRO', val()],
+    ['UF', val('uf')],
     ['ENDERECO', val('endereco')],
     ['HOMOLO', val('homolo')],
     ['MIGRACAO', val('migracao')],
@@ -593,7 +592,7 @@ function renderConsulta(r){
 
   putKV('#kv-principal', [
     ['DESIGNACAO ATUAL/ANTIGA', val('designacao_atual_antiga')],
-    ['DESIGNACAO NOVA', designacaoNovaDisplay],
+    ['DESIGNA NOVA', designacaoNovaDisplay],
     ['IP de NAT', ipNat],
     ['IP WAN', val('ip_wan')],
     ['LOOPBACK PRIMARIO', loopP],
