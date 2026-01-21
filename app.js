@@ -596,7 +596,6 @@ function renderConsulta(r){
     ['IP de NAT', ipNat],
     ['IP WAN', val('ip_wan')],
     ['LOOPBACK PRIMARIO', loopP],
-    ['PERIMETRO', val('perimetro')],
     ['SWITCH', val('switch')],
     ['EMPRESA OEMP', val('empresa_oemp')],
     ['CIRCUITO OEMP', val('circuito_oemp')],
