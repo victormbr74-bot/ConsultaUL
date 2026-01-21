@@ -519,7 +519,7 @@ function renderResults(list){
     const uf = pickField(r, ['uf','UF']);
     const owner = pickField(r, ['owner','OWNER']);
     const mig = pickField(r, ['migracao','MIGRACAO','MIGRACAO']);
-    const ccto = pickField(r, ['ccto_oi','ccto_oemp','CCTO OI','BASE UN','CCTO OEMP','CIRCUITO OEMP']);
+    const ccto = pickField(r, ['ccto_oi','ccto_oemp','CCTO OI','BASE UN','CCTO OEMP','CIRCUITO OEMP', 'DESIGNACAO NOVA']);
 
     const s=el('strong');
     s.textContent = `${code} - ${name || '-'}`;
@@ -592,7 +592,7 @@ function renderConsulta(r){
 
   putKV('#kv-principal', [
     ['DESIGNACAO ATUAL/ANTIGA', val('designacao_atual_antiga')],
-    ['DESIGNACAO NOVA', designacaoNovaDisplay],
+    ['DESIGNAÇÃO NOVA', designacaoNovaDisplay],
     ['IP de NAT', ipNat],
     ['IP WAN', val('ip_wan')],
     ['LOOPBACK PRIMARIO', loopP],
