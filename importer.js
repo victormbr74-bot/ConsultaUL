@@ -42,7 +42,7 @@ const COLUMN_ALIAS_MAP = (function(){
   const aliasGroups = {
     designacao_nova: [
       'designacao nova','designacao_nova','designacao__nova','designacao  nova',
-      'designacao_novo','desig nova','desig_nova','circuito novo','ccto novo'
+    'designacao_novo','desig nova','desig_nova','circuito novo','ccto novo', 'BASE UN', 'designação nova'
     ],
   };
   const map = {};

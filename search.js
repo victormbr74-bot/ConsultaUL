@@ -28,6 +28,7 @@ function buildSearchIndex(records){
       r.status,
       r.cidade,
       r.uf,
+	  r.designacao_nova,
     ].filter(Boolean).join(' | '));
     list.push({record: r, hay});
   }
