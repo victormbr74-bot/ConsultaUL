@@ -29,6 +29,7 @@ function buildSearchIndex(records){
       r.cidade,
       r.uf,
 	  r.designacao_nova,
+	  r.rede_lan,
     ].filter(Boolean).join(' | '));
     list.push({record: r, hay});
   }

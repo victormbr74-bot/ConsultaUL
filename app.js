@@ -592,7 +592,7 @@ function renderConsulta(r){
 
   putKV('#kv-principal', [
     ['DESIGNACAO ATUAL/ANTIGA', val('designacao_atual_antiga')],
-    ['DESIGNAÇÃO NOVA', designacaoNovaDisplay],
+    ['DESIGNACAO NOVA', designacaoNovaDisplay],
     ['IP de NAT', ipNat],
     ['IP WAN', val('ip_wan')],
     ['LOOPBACK PRIMARIO', loopP],
