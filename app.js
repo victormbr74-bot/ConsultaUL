@@ -581,7 +581,7 @@ function renderConsulta(r){
     ['STATUS', val('status')],
     ['CONTATO', val('contato')],
     ['UF', val('uf', 'regiao')],
-	['PERIMETRO', val()]
+	['PERIMETRO', val()],
     ['ENDERECO', val('endereco')],
     ['HOMOLO', val('homolo')],
     ['MIGRACAO', val('migracao')],
