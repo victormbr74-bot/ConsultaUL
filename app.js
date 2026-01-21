@@ -580,7 +580,8 @@ function renderConsulta(r){
     ['NOME UL', val('nome_ul')],
     ['STATUS', val('status')],
     ['CONTATO', val('contato')],
-    ['UF', val('uf')],
+    ['UF', val('uf', 'regiao')],
+	['PERIMETRO', val()]
     ['ENDERECO', val('endereco')],
     ['HOMOLO', val('homolo')],
     ['MIGRACAO', val('migracao')],

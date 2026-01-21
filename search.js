@@ -30,6 +30,7 @@ function buildSearchIndex(records){
       r.uf,
 	  r.designacao_nova,
 	  r.rede_lan,
+	  r.perimetro,
     ].filter(Boolean).join(' | '));
     list.push({record: r, hay});
   }

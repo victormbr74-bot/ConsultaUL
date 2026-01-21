@@ -13,6 +13,8 @@ const KEY_SYNONYMS = {
   endereco: ['endereco','endereco ul'],
   contato: ['contato'],
   uf: ['uf','estado'],
+  regiao: ['regiao'],
+  perimetro: ['perimetro'],
   cidade: ['cidade','municipio','municipio/estado'],
   status: ['status','status ul'],
   operadora: ['operadora','operadora backup'],
