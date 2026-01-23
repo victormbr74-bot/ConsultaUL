@@ -17,7 +17,8 @@
           <span>BASE OI OFFLINE</span>
         </div>
       </div>
-      <div class="app-actions">
+      <div class="app-bar-actions">
+        <p class="app-bar-note">Atualize a base semanalmente</p>
         <button id="appearanceToggle" class="icon-button" aria-label="Abrir painel de aparência">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M12 2a9 9 0 0 0-9 9.18c0 4.3 3.49 7.82 7.78 7.82a1 1 0 0 1 .93 1.4c-.3.78.23 1.7 1.06 1.7h.02c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-4.5 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-4.5 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" fill="currentColor"/>
@@ -26,214 +27,221 @@
       </div>
     </header>
 
-    <main class="container">
-    <section class="card">
-      <div class="search-row">
-        <label class="label" for="q">Buscar por <b>Código UL</b>, <b>CCTO</b> ou <b>Nome</b></label>
-        <div class="search-controls">
-          <input id="q" type="text" list="suggestions" placeholder="Ex: CODIGO UL ou CCTO ou NOME UL" autocomplete="off" />
-          <datalist id="suggestions"></datalist>
-          <button id="btnBuscar">Buscar</button>
-          <button id="btnLimpar" class="ghost">Limpar</button>
+    <main class="app-content">
+      <section class="card search-card">
+        <div class="search-row">
+          <label class="label" for="q">Buscar por <strong>Código UL</strong>, <strong>CCTO</strong> ou <strong>Nome</strong></label>
+          <div class="search-controls">
+            <input id="q" type="text" list="suggestions" placeholder="Ex: CODIGO UL ou CCTO ou NOME UL" autocomplete="off" />
+            <datalist id="suggestions"></datalist>
+            <button id="btnBuscar">Buscar</button>
+            <button id="btnLimpar" class="ghost">Limpar</button>
+          </div>
+          <div id="hint" class="hint">EX: <code>19-006776-4</code>. Para nome, digite algumas letras.</div>
         </div>
-        <div id="hint" class="hint"> EX: <code>19-006776-4</code>. Para nome, digite algumas letras.</div>
-      </div>
+        <div id="results" class="results"></div>
+      </section>
 
-      <div id="results" class="results"></div>
-    </section>
+      <section class="card main-panel">
+        <div class="tabs">
+          <button class="tab active" data-tab="consulta">Consulta</button>
+          <button class="tab" data-tab="mascara">Máscaras</button>
+          <button class="tab" data-tab="importar">Importar base (XLSX)</button>
+          <button class="tab" data-tab="loterica">Atualizar lotérica</button>
+        </div>
 
-    <section class="card">
-      <div class="tabs">
-        <button class="tab active" data-tab="consulta">Consulta</button>
-        <button class="tab" data-tab="mascara">Mascaras</button>
-        <button class="tab" data-tab="importar">Importar base (XLSX)</button>
-        <button class="tab" data-tab="loterica">Atualizar loterica</button>
-      </div>
-
-      <div id="view-consulta" class="view">
-        <div id="consulta-empty" class="hint">Faça uma consulta para ver os dados.</div>
-        <div id="consulta-layout" class="grid hidden">
-          <div class="panel">
-            <h2>Dados da Loterica</h2>
-            <div class="kv" id="kv-loterica"></div>
-          </div>
-          <div class="panel">
-            <h2>Link Principal</h2>
-            <div class="kv" id="kv-principal"></div>
-          </div>
-          <div class="panel">
-            <h2>Backup</h2>
-            <div class="kv" id="kv-backup"></div>
-          </div>
-          <div class="panel">
-            <h2>Comandos (atalhos)</h2>
-            <div class="cmds" id="cmds"></div>
+        <div id="view-consulta" class="view">
+          <div id="consulta-empty" class="hint">Faça uma consulta para ver os dados.</div>
+          <div id="consulta-layout" class="grid hidden">
+            <div class="panel">
+              <h2>Dados da Lotérica</h2>
+              <div class="kv" id="kv-loterica"></div>
+            </div>
+            <div class="panel">
+              <h2>Link Principal</h2>
+              <div class="kv" id="kv-principal"></div>
+            </div>
+            <div class="panel">
+              <h2>Backup</h2>
+              <div class="kv" id="kv-backup"></div>
+            </div>
+            <div class="panel">
+              <h2>Comandos (atalhos)</h2>
+              <div class="cmds" id="cmds"></div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div id="view-mascara" class="view hidden">
-        <div class="panel">
-          <div class="subtabs">
-            <button class="subtab active" data-subtab="abertura">Abertura</button>
-            <button class="subtab" data-subtab="encerramento">Encerramento</button>
-          </div>
-          <div id="maskWarning" class="hint">Faça uma consulta ou importe base para preencher automaticamente.</div>
-
-          <div id="view-mask-abertura" class="subview">
-            <div>
-              <label class="label" for="aberturaTipoSelect">Tipo de máscara de abertura</label>
-              <select id="aberturaTipoSelect" class="form-select">
-                <option value="oemp_oi">MASCARA OEMP OI</option>
-                <option value="mam_sct">ABERTURA MAM/SCT</option>
-                <option value="wt_telecom">MASCARA WT TELECOM</option>
-                <option value="ativa">MASCARA ATIVA</option>
-              </select>
+        <div id="view-mascara" class="view hidden">
+          <div class="panel">
+            <div class="subtabs">
+              <button class="subtab active" data-subtab="abertura">Abertura</button>
+              <button class="subtab" data-subtab="encerramento">Encerramento</button>
             </div>
-            <div class="field-row">
-              <div class="grow">
-                <label class="label" for="abDefeito">Defeito reclamado</label>
-                <select id="abDefeito" class="form-select"></select>
+            <div id="maskWarning" class="hint">Faça uma consulta ou importe base para preencher automaticamente.</div>
+            <div id="view-mask-abertura" class="subview">
+              <div>
+                <label class="label" for="aberturaTipoSelect">Tipo de máscara de abertura</label>
+                <select id="aberturaTipoSelect" class="form-select">
+                  <option value="oemp_oi">MÁSCARA OEMP OI</option>
+                  <option value="mam_sct">ABERTURA MAM/SCT</option>
+                  <option value="wt_telecom">MÁSCARA WT TELECOM</option>
+                  <option value="ativa">MÁSCARA ATIVA</option>
+                </select>
               </div>
-              <div class="compact">
-                <label class="label">&nbsp;</label>
-                <button id="btnRestaurarReclamacao" class="ghost">Restaurar padrão</button>
+              <div class="field-row">
+                <div class="grow">
+                  <label class="label" for="abDefeito">Defeito reclamado</label>
+                  <select id="abDefeito" class="form-select"></select>
+                </div>
+                <div class="compact">
+                  <label class="label">&nbsp;</label>
+                  <button id="btnRestaurarReclamacao" class="ghost">Restaurar padrão</button>
+                </div>
+              </div>
+              <div>
+                <label class="label" for="abReclamacao">Reclamação inicial</label>
+                <textarea id="abReclamacao" spellcheck="false"></textarea>
+              </div>
+              <div class="mask-actions">
+                <button id="btnCopiarAbertura">Copiar máscara</button>
+                <button id="btnDownloadAbertura" class="ghost">Baixar TXT</button>
+                <button id="btnLimparAbertura" class="ghost">Limpar</button>
+                <span id="abStatus" class="hint"></span>
               </div>
             </div>
-            <div>
-              <label class="label" for="abReclamacao">Reclamação inicial</label>
-              <textarea id="abReclamacao" spellcheck="false"></textarea>
+            <div id="view-mask-encerramento" class="subview hidden">
+              <div class="field-row">
+                <div>
+                  <label class="label" for="encFalha">Falha</label>
+                  <select id="encFalha" class="form-select"></select>
+                </div>
+                <div class="grow">
+                  <label class="label" for="encCausa">Causa/Solução</label>
+                  <select id="encCausa" class="form-select"></select>
+                </div>
+                <div class="compact">
+                  <label class="label">&nbsp;</label>
+                  <button id="btnAddCausa" class="ghost">Adicionar nova causa</button>
+                </div>
+              </div>
+              <div class="field-row">
+                <div>
+                  <label class="label" for="encContatoNome">Contato de Autorização - Nome</label>
+                  <input id="encContatoNome" type="text" />
+                </div>
+                <div>
+                  <label class="label" for="encContatoTel">Contato de Autorização - Telefone</label>
+                  <input id="encContatoTel" type="text" />
+                </div>
+                <div class="compact">
+                  <label class="label">&nbsp;</label>
+                  <button id="btnLastContato" class="ghost">Preencher com último usado</button>
+                </div>
+              </div>
+              <div class="field-row">
+                <div>
+                  <label class="label" for="encQueda">Data e hora da queda</label>
+                  <input id="encQueda" type="text" placeholder="dd/mm/aaaa HH:MM[:SS]" />
+                </div>
+                <div class="compact">
+                  <label class="label">&nbsp;</label>
+                  <label class="check">
+                    <input id="encAuto" type="checkbox" />
+                    Calcular automaticamente
+                  </label>
+                </div>
+                <div>
+                  <label class="label" for="encTempo">Tempo de normalização (HH:MM)</label>
+                  <input id="encTempo" type="text" placeholder="48:00" />
+                </div>
+              </div>
+              <div class="field-row">
+                <div>
+                  <label class="label" for="encNormalizacao">Horário de normalização</label>
+                  <input id="encNormalizacao" type="text" placeholder="dd/mm/aaaa HH:MM:SS" />
+                </div>
+              </div>
+              <div class="mask-actions">
+                <button id="btnCopiarEncerramento">Copiar máscara</button>
+                <button id="btnDownloadEncerramento" class="ghost">Baixar TXT</button>
+                <button id="btnLimparEncerramento" class="ghost">Limpar</button>
+                <span id="encStatus" class="hint"></span>
+              </div>
             </div>
             <div class="mask-actions">
-              <button id="btnCopiarAbertura">Copiar mascara</button>
-              <button id="btnDownloadAbertura" class="ghost">Baixar TXT</button>
-              <button id="btnLimparAbertura" class="ghost">Limpar</button>
-              <span id="abStatus" class="hint"></span>
+              <span id="copystatus" class="hint"></span>
             </div>
+            <pre id="maskText" class="mask-preview"></pre>
+            <p class="hint">Prévia do texto gerado. Copie ou baixe em TXT.</p>
           </div>
+        </div>
 
-          <div id="view-mask-encerramento" class="subview hidden">
+        <div id="view-importar" class="view hidden">
+          <div class="panel">
+            <h2>Importar base (XLSX)</h2>
+            <p class="hint">Selecione o XLSX e importe. Os dados ficam salvos no navegador (IndexedDB).</p>
+            <label class="label" for="xlsxUrl">URL do XLSX (site)</label>
+            <input id="xlsxUrl" type="text" value="./base.xlsx" />
+            <button id="btnUpdateFromSite" class="ghost">Atualizar base (XLSX do site)</button>
+            <div class="actions">
+              <button id="btnAutoLoadBase" class="ghost">Atualizar base (base.xlsx)</button>
+              <span id="autoLoadNote" class="hint"></span>
+            </div>
+            <div id="lastUpdateInfo" class="hint">Última atualização: nunca</div>
+            <input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+            <div class="actions">
+              <button id="btnImportXlsx">Importar XLSX</button>
+              <button id="btnClearDb" class="ghost">Apagar base local</button>
+            </div>
+            <div class="actions">
+              <button id="btnExportJson" class="ghost">Exportar JSON da base</button>
+              <input id="jsonFile" type="file" accept=".json,application/json" />
+              <button id="btnImportJson" class="ghost">Importar JSON da base</button>
+            </div>
+            <div id="importStatus" class="status"></div>
+          </div>
+          <div class="alert">
+            <strong>GitHub Pages é somente leitura.</strong> Para publicar alterações, exporte a base e substitua o arquivo <code>base.xlsx</code> no repositório até 1x por semana.
+          </div>
+          <div class="panel">
+            <h2>Exportar base (XLSX)</h2>
+            <p class="hint">Gera <code>base_atualizada_YYYY-MM-DD_HHMMSS.xlsx</code> com todos os registros e o histórico da última importação.</p>
+            <button id="btnExportBaseXlsx">Exportar base (XLSX)</button>
+            <p class="hint">Com esse arquivo você substitui o <code>base.xlsx</code> publicado.</p>
+          </div>
+        </div>
+
+        <div id="view-loterica" class="view hidden">
+          <div class="alert">
+            Este site salva alterações apenas no seu navegador. Use o botão abaixo para exportar e publicar no GitHub Pages.
+          </div>
+          <div class="panel">
             <div class="field-row">
               <div>
-                <label class="label" for="encFalha">Falha</label>
-                <select id="encFalha" class="form-select"></select>
-              </div>
-              <div class="grow">
-                <label class="label" for="encCausa">Causa/Solução</label>
-                <select id="encCausa" class="form-select"></select>
-              </div>
-              <div class="compact">
-                <label class="label">&nbsp;</label>
-                <button id="btnAddCausa" class="ghost">Adicionar nova causa</button>
+                <h2 style="margin:0;">Atualizar uma lotérica</h2>
+                <span id="localChangesBadge" class="badge hidden">Alterações locais pendentes</span>
               </div>
             </div>
-            <div class="field-row">
-              <div>
-                <label class="label" for="encContatoNome">Contato de Autorização - Nome</label>
-                <input id="encContatoNome" type="text" />
-              </div>
-              <div>
-                <label class="label" for="encContatoTel">Contato de Autorização - Telefone</label>
-                <input id="encContatoTel" type="text" />
-              </div>
-              <div class="compact">
-                <label class="label">&nbsp;</label>
-                <button id="btnLastContato" class="ghost">Preencher com ultimo usado</button>
-              </div>
+            <label class="label" for="ulCode">Código UL</label>
+            <input id="ulCode" type="text" placeholder="Ex: 19-006776-4" autocomplete="off" />
+            <label class="label" for="ulJson">JSON do registro</label>
+            <textarea id="ulJson" spellcheck="false" placeholder="Cole aqui o JSON de uma lotérica"></textarea>
+            <div class="actions">
+              <button id="btnFillSelected" class="ghost">Usar selecionado</button>
+              <button id="btnApplyUl">Aplicar atualização</button>
+              <button id="btnDeleteUl" class="ghost">Excluir lotérica</button>
             </div>
-            <div class="field-row">
-              <div>
-                <label class="label" for="encQueda">Data e hora da queda</label>
-                <input id="encQueda" type="text" placeholder="dd/mm/aaaa HH:MM[:SS]" />
-              </div>
-              <div class="compact">
-                <label class="label">&nbsp;</label>
-                <label class="check">
-                  <input id="encAuto" type="checkbox" />
-                  Calcular automaticamente
-                </label>
-              </div>
-              <div>
-                <label class="label" for="encTempo">Tempo de normalização (HH:MM)</label>
-                <input id="encTempo" type="text" placeholder="48:00" />
-              </div>
-            </div>
-            <div class="field-row">
-              <div>
-                <label class="label" for="encNormalizacao">Horário de normalização</label>
-                <input id="encNormalizacao" type="text" placeholder="dd/mm/aaaa HH:MM:SS" />
-              </div>
-            </div>
-            <div class="mask-actions">
-              <button id="btnCopiarEncerramento">Copiar mascara</button>
-              <button id="btnDownloadEncerramento" class="ghost">Baixar TXT</button>
-              <button id="btnLimparEncerramento" class="ghost">Limpar</button>
-              <span id="encStatus" class="hint"></span>
-            </div>
+            <div id="ulStatus" class="status"></div>
           </div>
-
-          <div class="mask-actions">
-            <span id="copystatus" class="hint"></span>
-          </div>
-          <pre id="maskText" class="mask-preview"></pre>
-          <p class="hint">Previa do texto gerado. Copie ou baixe em TXT.</p>
         </div>
-      </div>
+      </section>
+    </main>
 
-      <div id="view-importar" class="view hidden">
-        <div class="panel">
-          <h2>Importar base (XLSX)</h2>
-          <p class="hint">Selecione o XLSX e importe. Os dados ficam salvos no navegador (IndexedDB).</p>
-          <label class="label" for="xlsxUrl">URL do XLSX (site)</label>
-          <input id="xlsxUrl" type="text" value="./base.xlsx" />
-          <button id="btnUpdateFromSite" class="ghost">Atualizar base (XLSX do site)</button>
-          <div class="actions">
-            <button id="btnAutoLoadBase" class="ghost">Atualizar base (base.xlsx)</button>
-            <span id="autoLoadNote" class="hint"></span>
-          </div>
-          <div id="lastUpdateInfo" class="hint">Última atualização: nunca</div>
-          <input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
-          <div class="actions">
-            <button id="btnImportXlsx">Importar XLSX</button>
-            <button id="btnClearDb" class="ghost">Apagar base local</button>
-          </div>
-          <div class="actions">
-            <button id="btnExportJson" class="ghost">Exportar JSON da base</button>
-            <input id="jsonFile" type="file" accept=".json,application/json" />
-            <button id="btnImportJson" class="ghost">Importar JSON da base</button>
-          </div>
-          <div id="importStatus" class="status"></div>
-        </div>
-        <div class="panel">
-          <h2>Exportar base atualizada</h2>
-          <p class="hint">Gera base_atualizada_YYYY-MM-DD_HHMMSS.xlsx com os registros carregados e metadados.</p>
-          <button id="btnExportBaseXlsx">Baixar base.xlsx atualizado</button>
-          <p class="hint">Use esta planilha para substituir o arquivo base.xlsx publicado no GitHub Pages.</p>
-        </div>
-      </div>
-
-      <div id="view-loterica" class="view hidden">
-        <div class="panel">
-          <h2>Atualizar uma loterica</h2>
-          <label class="label" for="ulCode">Codigo UL</label>
-          <input id="ulCode" type="text" placeholder="Ex: 19-006776-4" autocomplete="off" />
-          <label class="label" for="ulJson">JSON do registro</label>
-          <textarea id="ulJson" spellcheck="false" placeholder="Cole aqui o JSON de uma loterica"></textarea>
-          <div class="actions">
-            <button id="btnFillSelected" class="ghost">Usar selecionado</button>
-            <button id="btnApplyUl">Aplicar atualizacao</button>
-            <button id="btnDeleteUl" class="ghost">Excluir loterica</button>
-          </div>
-          <div id="ulStatus" class="status"></div>
-        </div>
-      </div>
-    </section>
-
-  </main>
-  <footer class="foot">
-    <span>DESENVOLVIDO POR MANOEL CEC-OI.</span>
-    <span>ESTAMOS TRABALHANDO PARA MELHOR ATENDE-LOS</span>
-  </footer>
+    <footer class="foot">
+      <span>DESENVOLVIDO POR MANOEL CEC-OI.</span>
+      <span>ESTAMOS TRABALHANDO PARA MELHOR ATENDE-LOS</span>
+    </footer>
   </div>
 
   <aside class="appearance-drawer" id="appearanceDrawer">
@@ -259,18 +267,8 @@
       </div>
     </div>
     <div class="appearance-section">
-      <label for="appearancePrimaryColor">Cor primária</label>
-      <div class="color-field">
-        <input id="appearancePrimaryColor" type="color" value="#60a5fa" />
-        <input id="appearancePrimaryHex" type="text" maxlength="7" />
-      </div>
-    </div>
-    <div class="appearance-section">
-      <label for="appearanceSecondaryColor">Cor secundária</label>
-      <div class="color-field">
-        <input id="appearanceSecondaryColor" type="color" value="#a855f7" />
-        <input id="appearanceSecondaryHex" type="text" maxlength="7" />
-      </div>
+      <label>Paleta de cores</label>
+      <div class="appearance-color-grid" id="appearanceColorGrid"></div>
     </div>
     <div class="appearance-section">
       <label>Densidade</label>
@@ -291,7 +289,7 @@
         <span class="chip preview-chip--secondary">Secundária</span>
         <button type="button" class="chip preview-chip--button">Botão</button>
       </div>
-      <p class="hint">Prévia rápida de chips, tab e botão.</p>
+      <p class="hint">Prévia rápida de chips, tabs e botões.</p>
     </div>
     <div class="appearance-section">
       <button type="button" id="appearanceReset">Restaurar padrão</button>

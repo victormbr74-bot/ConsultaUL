@@ -32,6 +32,7 @@ const STORAGE_CUSTOM_CAUSES = 'customCauses';
 const AUTO_BASE_URL = './base.xlsx';
 const AUTO_BASE_WARNING = 'Base automática não encontrada. Use Importar XLSX.';
 const AUTO_LAST_UPDATE_EMPTY = 'Última atualização: nunca';
+const LOCAL_CHANGES_KEY = 'local_changes_pending';
 let AUTO_LOAD_IN_PROGRESS = false;
 
 const $ = (sel) => document.querySelector(sel);
@@ -74,6 +75,21 @@ function setAutoLoadWarning(text){
 
 function setResultsHint(text){
   $('#results').innerHTML = `<div class="hint">${text}</div>`;
+}
+
+function setLocalChangesBadge(pending, persist = true){
+  if(persist){
+    localStorage.setItem(LOCAL_CHANGES_KEY, pending ? '1' : '0');
+  }
+  const badge = $('#localChangesBadge');
+  if(badge){
+    badge.classList.toggle('hidden', !pending);
+  }
+}
+
+function loadLocalChangesState(){
+  const pending = localStorage.getItem(LOCAL_CHANGES_KEY) === '1';
+  setLocalChangesBadge(pending, false);
 }
 
 function escapeHtml(text){
@@ -554,6 +570,7 @@ async function exportBaseAsXlsx(){
       URL.revokeObjectURL(url);
       document.body.removeChild(a);
     }, 1500);
+    setLocalChangesBadge(false);
     window.showSnackbar?.('Base exportada ✅');
   } catch (err){
     console.error(err);
@@ -1160,6 +1177,7 @@ async function wireUI(){
     if(MASK_SUBTAB === 'abertura') refreshAbertura();
     if(MASK_SUBTAB === 'encerramento') refreshEncerramentoMinimal();
     setStatus('#ulStatus', [`Registro ${code} salvo.`]);
+    setLocalChangesBadge(true);
   });
 
   $('#btnDeleteUl').addEventListener('click', async ()=>{
@@ -1177,7 +1195,9 @@ async function wireUI(){
       renderConsulta(null);
     }
     setStatus('#ulStatus', [`Registro ${code} excluido.`]);
+    setLocalChangesBadge(true);
   });
+  loadLocalChangesState();
 }
 
 document.addEventListener('DOMContentLoaded', async ()=>{

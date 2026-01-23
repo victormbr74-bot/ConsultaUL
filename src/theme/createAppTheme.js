@@ -1,29 +1,53 @@
 const HEX_SHORT = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/;
 const HEX_LONG = /^#([0-9a-fA-F]{6})$/;
 
+const COLOR_PRESETS = {
+  blue: {
+    label: 'Azul',
+    value: '#2563EB',
+  },
+  cyan: {
+    label: 'Ciano',
+    value: '#06B6D4',
+  },
+  purple: {
+    label: 'Roxo',
+    value: '#7C3AED',
+  },
+  green: {
+    label: 'Verde',
+    value: '#22C55E',
+  },
+  orange: {
+    label: 'Laranja',
+    value: '#F97316',
+  },
+};
+
 const DENSITY_CONFIG = {
   comfortable: {
-    baseGap: '16px',
-    panelPadding: '16px',
-    inputPadding: '14px',
-    chipPadding: '7px 16px',
-    controlGap: '12px',
-    borderRadius: '16px',
+    baseGap: '18px',
+    panelPadding: '18px',
+    inputPadding: '12px',
+    chipPadding: '6px 14px',
+    controlGap: '14px',
+    borderRadius: '14px',
+    toolbarHeight: '56px',
   },
   compact: {
-    baseGap: '10px',
-    panelPadding: '12px',
+    baseGap: '12px',
+    panelPadding: '14px',
     inputPadding: '10px',
     chipPadding: '5px 12px',
-    controlGap: '8px',
+    controlGap: '10px',
     borderRadius: '12px',
+    toolbarHeight: '52px',
   },
 };
 
 const DEFAULT_THEME = {
   mode: 'system',
-  primary: '#60A5FA',
-  secondary: '#A855F7',
+  color: 'blue',
   density: 'comfortable',
 };
 
@@ -92,6 +116,13 @@ function getContrastText(hex) {
   return lum > 0.55 ? '#0F172A' : '#F8FAFC';
 }
 
+function resolveColorName(key) {
+  if(!key) return DEFAULT_THEME.color;
+  const lower = String(key).toLowerCase();
+  if(COLOR_PRESETS[lower]) return lower;
+  return DEFAULT_THEME.color;
+}
+
 export function createAppTheme(options = {}) {
   const modeInput = (options.mode || DEFAULT_THEME.mode).toLowerCase();
   const resolvedDensity = DENSITY_CONFIG[options.density] ? options.density : DEFAULT_THEME.density;
@@ -101,31 +132,103 @@ export function createAppTheme(options = {}) {
     : modeInput === 'dark'
       ? 'dark'
       : 'light';
+  const resolvedColor = resolveColorName(options.color);
 
   const isDark = resolvedMode === 'dark';
-  const primaryColor = normalizeHex(options.primary || DEFAULT_THEME.primary, DEFAULT_THEME.primary);
-  const secondaryColor = normalizeHex(options.secondary || DEFAULT_THEME.secondary, DEFAULT_THEME.secondary);
-  const backgroundDefault = isDark ? '#030712' : '#F5F5FB';
-  const backgroundPaper = isDark ? '#0F172A' : '#FFFFFF';
+  const primaryColor = normalizeHex(COLOR_PRESETS[resolvedColor].value, COLOR_PRESETS[DEFAULT_THEME.color].value);
+  const secondaryColor = mixColors(primaryColor, '#ffffff', 0.4);
+  const backgroundDefault = isDark ? '#05070f' : '#F4F5FB';
+  const backgroundPaper = isDark ? '#0b1220' : '#ffffff';
   const borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.12)';
-  const mutedText = isDark ? '#9CA3AF' : '#6B7280';
+  const mutedText = isDark ? '#9ca3af' : '#6b7280';
 
   const palette = {
     mode: resolvedMode,
     primary: {main: primaryColor, contrastText: getContrastText(primaryColor)},
-    secondary: {main: secondaryColor, contrastText: getContrastText(secondaryColor)},
+    secondary: {main: normalizeHex(secondaryColor, '#a3bffa'), contrastText: getContrastText(secondaryColor)},
     background: {
       default: backgroundDefault,
       paper: backgroundPaper,
     },
     text: {
-      primary: isDark ? '#F8FAFC' : '#0F172A',
+      primary: isDark ? '#f8fafc' : '#0f172a',
       secondary: mutedText,
     },
     divider: borderColor,
   };
 
   const spacing = DENSITY_CONFIG[resolvedDensity];
+  const typography = {
+    fontFamily: ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'].join(','),
+    h5: {
+      fontWeight: 600,
+      letterSpacing: '0.02em',
+      fontSize: '1.35rem',
+    },
+    h6: {
+      fontWeight: 600,
+      letterSpacing: '0.08em',
+      fontSize: '1rem',
+    },
+    body2: {
+      fontSize: '0.95rem',
+      letterSpacing: '0.01em',
+    },
+    button: {
+      textTransform: 'none',
+      fontWeight: 600,
+    },
+  };
+
+  const components = {
+    shape: {
+      borderRadius: 14,
+    },
+    components: {
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            border: `1px solid ${borderColor}`,
+            boxShadow: isDark ? '0 18px 45px rgba(0,0,0,0.6)' : '0 10px 35px rgba(15,23,42,0.25)',
+          },
+        },
+      },
+      MuiTabs: {
+        styleOverrides: {
+          indicator: {
+            height: 3,
+            borderRadius: 3,
+            backgroundColor: primaryColor,
+          },
+        },
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 999,
+            padding: '10px 18px',
+            textTransform: 'none',
+          },
+        },
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            borderRadius: 14,
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            borderRadius: 999,
+            fontWeight: 600,
+          },
+        },
+      },
+    },
+  };
+
   const focusColor = mixColors(primaryColor, isDark ? '#0F172A' : '#FFFFFF', 0.35);
 
   return {
@@ -135,7 +238,11 @@ export function createAppTheme(options = {}) {
     density: resolvedDensity,
     focus: {ring: focusColor},
     border: borderColor,
+    typography,
+    components,
+    primaryColor,
+    colorName: resolvedColor,
   };
 }
 
-export {DEFAULT_THEME, normalizeHex, getContrastText};
+export {DEFAULT_THEME, COLOR_PRESETS, getContrastText};

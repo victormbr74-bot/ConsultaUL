@@ -42,11 +42,12 @@ Observacoes:
 - Nao envia dados para a internet
 
 Preferencias de aparencia:
-- O painel "Aparência" fica acessível pelo ícone de paleta no canto superior direito.
-- As escolhas (modo: system/light/dark, cores primary/secondary e densidade comfortable/compact) são salvas no localStorage com as chaves `theme_mode`, `theme_primary`, `theme_secondary` e `theme_density`.
-- Cores podem ser digitadas como `#RGB` ou `#RRGGBB` e são normalizadas imediatamente. O tema do AppBar, botões, tabs e chips acompanha as seleções em tempo real, mantendo contraste adequado.
+- O painel "Aparência" fica acessível pelo ícone de paleta na AppBar.
+- Modos disponíveis: Seguir sistema / Claro / Escuro. A seleção fica em `theme_mode`.
+- Paleta fixa de 5 cores: Azul (#2563EB), Ciano (#06B6D4), Roxo (#7C3AED), Verde (#22C55E) e Laranja (#F97316). A escolha persiste em `theme_color` e atualiza AppBar, botões e chips ao vivo.
+- Densidade compacta ou confortável salva em `theme_density` e altera padding/bordas.
 
-Exportar XLSX atualizado:
-- Dentro da aba "Importar base (XLSX)" há um card "Exportar base atualizada" com o botão "Baixar base.xlsx atualizado".
-- O download gera um arquivo `base_atualizada_YYYY-MM-DD_HHMMSS.xlsx` contendo uma planilha BASE com os registros atuais (colunas normalizadas) e uma planilha META com `lastUpdate`, `recordCount` e `source`.
-- Use esse arquivo para substituir o `base.xlsx` publicado no repositório/GitHub Pages, já que o Pages serve apenas arquivos estáticos e não grava em tempo de execução.
+Exportar e publicar a base:
+- A aba "Importar base (XLSX)" mostra um aviso de que o GitHub Pages é somente leitura; para publicar, use o botão "Exportar base (XLSX)" e substitua `base.xlsx` no repositório (até 1x por semana).
+- O download gera `base_atualizada_YYYY-MM-DD_HHMMSS.xlsx` com uma planilha BASE (todos os registros) e META (última importação, contagem e fonte).
+- Depois de exportar, o badge "Alterações locais pendentes" some; o botão "Atualizar lotérica" seta o badge quando há edições locais.

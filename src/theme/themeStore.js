@@ -1,9 +1,8 @@
-import {createAppTheme, DEFAULT_THEME, normalizeHex} from './createAppTheme.js';
+import {createAppTheme, DEFAULT_THEME, COLOR_PRESETS} from './createAppTheme.js';
 
 const STORAGE_KEYS = {
   mode: 'theme_mode',
-  primary: 'theme_primary',
-  secondary: 'theme_secondary',
+  color: 'theme_color',
   density: 'theme_density',
 };
 
@@ -14,8 +13,7 @@ const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
 const state = {
   mode: DEFAULT_THEME.mode,
-  primary: DEFAULT_THEME.primary,
-  secondary: DEFAULT_THEME.secondary,
+  color: DEFAULT_THEME.color,
   density: DEFAULT_THEME.density,
 };
 
@@ -45,8 +43,9 @@ function loadStateFromStorage() {
   state.mode = VALID_MODES.includes(readStored(STORAGE_KEYS.mode, state.mode))
     ? readStored(STORAGE_KEYS.mode, state.mode)
     : DEFAULT_THEME.mode;
-  state.primary = normalizeHex(readStored(STORAGE_KEYS.primary, state.primary), DEFAULT_THEME.primary);
-  state.secondary = normalizeHex(readStored(STORAGE_KEYS.secondary, state.secondary), DEFAULT_THEME.secondary);
+  state.color = COLOR_PRESETS[readStored(STORAGE_KEYS.color, state.color)]
+    ? readStored(STORAGE_KEYS.color, state.color)
+    : DEFAULT_THEME.color;
   state.density = VALID_DENSITIES.includes(readStored(STORAGE_KEYS.density, state.density))
     ? readStored(STORAGE_KEYS.density, state.density)
     : DEFAULT_THEME.density;
@@ -54,8 +53,7 @@ function loadStateFromStorage() {
 
 function persistState() {
   writeStored(STORAGE_KEYS.mode, state.mode);
-  writeStored(STORAGE_KEYS.primary, state.primary);
-  writeStored(STORAGE_KEYS.secondary, state.secondary);
+  writeStored(STORAGE_KEYS.color, state.color);
   writeStored(STORAGE_KEYS.density, state.density);
 }
 
@@ -71,28 +69,30 @@ function applyCssVariables(theme) {
   root.style.setProperty('--primary-text', theme.palette.primary.contrastText);
   root.style.setProperty('--secondary', theme.palette.secondary.main);
   root.style.setProperty('--secondary-text', theme.palette.secondary.contrastText);
-  root.style.setProperty('--appbar-bg', theme.palette.primary.main);
-  root.style.setProperty('--appbar-text', theme.palette.primary.contrastText);
+  root.style.setProperty('--appbar-bg', theme.palette.background.paper);
+  root.style.setProperty('--appbar-text', theme.palette.text.primary);
+  root.style.setProperty('--appbar-border', theme.palette.divider);
   root.style.setProperty('--button-bg', theme.palette.primary.main);
   root.style.setProperty('--button-text', theme.palette.primary.contrastText);
   root.style.setProperty('--focus-ring', theme.focus.ring);
   root.style.setProperty('--surface-shadow', theme.mode === 'dark'
-    ? '0 20px 45px rgba(0,0,0,0.65)'
-    : '0 20px 45px rgba(15,23,42,0.25)');
+    ? '0 20px 45px rgba(0,0,0,0.45)'
+    : '0 20px 35px rgba(15,23,42,0.25)');
   root.style.setProperty('--density-border-radius', theme.spacing.borderRadius);
   root.style.setProperty('--spacing-base', theme.spacing.baseGap);
   root.style.setProperty('--panel-padding', theme.spacing.panelPadding);
   root.style.setProperty('--input-padding', theme.spacing.inputPadding);
   root.style.setProperty('--chip-padding', theme.spacing.chipPadding);
   root.style.setProperty('--control-gap', theme.spacing.controlGap);
+  root.style.setProperty('--toolbar-height', theme.spacing.toolbarHeight);
   root.dataset.themeMode = theme.mode;
+  root.dataset.themeColor = theme.colorName;
 }
 
 function applyTheme() {
   const theme = createAppTheme({
     mode: state.mode,
-    primary: state.primary,
-    secondary: state.secondary,
+    color: state.color,
     density: state.density,
     systemPrefersDark: mediaQuery.matches,
   });
@@ -101,41 +101,15 @@ function applyTheme() {
 }
 
 function syncControls() {
-  const modeInputs = document.querySelectorAll('[name="appearanceMode"]');
-  modeInputs.forEach((input) => {
+  document.querySelectorAll('[name="appearanceMode"]').forEach((input) => {
     input.checked = input.value === state.mode;
   });
-  const densityInputs = document.querySelectorAll('[name="appearanceDensity"]');
-  densityInputs.forEach((input) => {
+  document.querySelectorAll('[name="appearanceDensity"]').forEach((input) => {
     input.checked = input.value === state.density;
   });
-  const primaryColor = document.getElementById('appearancePrimaryColor');
-  const primaryHex = document.getElementById('appearancePrimaryHex');
-  const secondaryColor = document.getElementById('appearanceSecondaryColor');
-  const secondaryHex = document.getElementById('appearanceSecondaryHex');
-  if(primaryColor) primaryColor.value = state.primary;
-  if(primaryHex) primaryHex.value = state.primary;
-  if(secondaryColor) secondaryColor.value = state.secondary;
-  if(secondaryHex) secondaryHex.value = state.secondary;
-}
-
-function sanitizeHexInput(value, fallback) {
-  const normalized = normalizeHex(value || '', fallback);
-  return normalized;
-}
-
-function updatePrimary(value) {
-  const normalized = sanitizeHexInput(value, DEFAULT_THEME.primary);
-  state.primary = normalized;
-  persistState();
-  applyTheme();
-}
-
-function updateSecondary(value) {
-  const normalized = sanitizeHexInput(value, DEFAULT_THEME.secondary);
-  state.secondary = normalized;
-  persistState();
-  applyTheme();
+  document.querySelectorAll('[data-color-key]').forEach((button) => {
+    button.classList.toggle('selected', button.dataset.colorKey === state.color);
+  });
 }
 
 function handleModeChange(event) {
@@ -148,6 +122,42 @@ function handleDensityChange(event) {
   state.density = event.target.value;
   persistState();
   applyTheme();
+}
+
+function updateColorSelection(colorKey) {
+  if(!COLOR_PRESETS[colorKey]) return;
+  state.color = colorKey;
+  persistState();
+  applyTheme();
+}
+
+function renderColorOptions() {
+  const container = document.getElementById('appearanceColorGrid');
+  if(!container) return;
+  container.innerHTML = '';
+  Object.entries(COLOR_PRESETS).forEach(([key, preset]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'appearance-color-btn';
+    button.dataset.colorKey = key;
+    button.setAttribute('title', preset.label);
+    button.setAttribute('aria-label', preset.label);
+    button.innerHTML = `
+      <span class="appearance-color-btn__circle" style="background:${preset.value};"></span>
+      <span class="appearance-color-btn__check" aria-hidden="true">✓</span>
+    `;
+    container.appendChild(button);
+  });
+}
+
+function bindColorGrid() {
+  const container = document.getElementById('appearanceColorGrid');
+  if(!container) return;
+  container.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-color-key]');
+    if(!button) return;
+    updateColorSelection(button.dataset.colorKey);
+  });
 }
 
 function handleDrawerToggle() {
@@ -175,44 +185,6 @@ function bindDrawerListeners() {
   });
 }
 
-function handleColorInputs() {
-  const primaryColor = document.getElementById('appearancePrimaryColor');
-  const primaryHex = document.getElementById('appearancePrimaryHex');
-  const secondaryColor = document.getElementById('appearanceSecondaryColor');
-  const secondaryHex = document.getElementById('appearanceSecondaryHex');
-
-  if(primaryColor) {
-    primaryColor.addEventListener('input', (event) => {
-      updatePrimary(event.target.value);
-      if(primaryHex) primaryHex.value = state.primary;
-    });
-  }
-  if(primaryHex) {
-    primaryHex.addEventListener('change', (event) => {
-      updatePrimary(event.target.value);
-      if(primaryColor) primaryColor.value = state.primary;
-    });
-    primaryHex.addEventListener('blur', () => {
-      if(primaryHex.value !== state.primary) primaryHex.value = state.primary;
-    });
-  }
-  if(secondaryColor) {
-    secondaryColor.addEventListener('input', (event) => {
-      updateSecondary(event.target.value);
-      if(secondaryHex) secondaryHex.value = state.secondary;
-    });
-  }
-  if(secondaryHex) {
-    secondaryHex.addEventListener('change', (event) => {
-      updateSecondary(event.target.value);
-      if(secondaryColor) secondaryColor.value = state.secondary;
-    });
-    secondaryHex.addEventListener('blur', () => {
-      if(secondaryHex.value !== state.secondary) secondaryHex.value = state.secondary;
-    });
-  }
-}
-
 function bindModeAndDensity() {
   document.querySelectorAll('[name="appearanceMode"]').forEach((input) => {
     input.addEventListener('change', handleModeChange);
@@ -224,8 +196,7 @@ function bindModeAndDensity() {
 
 function resetToDefaults() {
   state.mode = DEFAULT_THEME.mode;
-  state.primary = DEFAULT_THEME.primary;
-  state.secondary = DEFAULT_THEME.secondary;
+  state.color = DEFAULT_THEME.color;
   state.density = DEFAULT_THEME.density;
   persistState();
   applyTheme();
@@ -257,9 +228,10 @@ function initSnackbar() {
 function initAppearanceControls() {
   drawer = document.getElementById('appearanceDrawer');
   backdrop = document.getElementById('appearanceBackdrop');
+  renderColorOptions();
   bindDrawerListeners();
   bindModeAndDensity();
-  handleColorInputs();
+  bindColorGrid();
   bindReset();
 }
 
