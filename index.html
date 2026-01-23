@@ -8,16 +8,25 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="top">
-    <div>
-      <div class="title">
-        <img class="title-icon" src="./favicon.svg" alt="" aria-hidden="true" />
-        <h1>CONSULTA LOTERICAS</h1>
+  <div class="app-shell">
+    <header class="app-bar">
+      <div class="app-title">
+        <img class="app-title__logo" src="./favicon.svg" alt="" aria-hidden="true" />
+        <div class="app-title__text">
+          <strong>CONSULTA LOTERICAS</strong>
+          <span>BASE OI OFFLINE</span>
+        </div>
       </div>
-    </div>
-  </header>
+      <div class="app-actions">
+        <button id="appearanceToggle" class="icon-button" aria-label="Abrir painel de aparência">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2a9 9 0 0 0-9 9.18c0 4.3 3.49 7.82 7.78 7.82a1 1 0 0 1 .93 1.4c-.3.78.23 1.7 1.06 1.7h.02c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-4.5 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-4.5 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
 
-  <main class="container">
+    <main class="container">
     <section class="card">
       <div class="search-row">
         <label class="label" for="q">Buscar por <b>Código UL</b>, <b>CCTO</b> ou <b>Nome</b></label>
@@ -195,6 +204,12 @@
           </div>
           <div id="importStatus" class="status"></div>
         </div>
+        <div class="panel">
+          <h2>Exportar base atualizada</h2>
+          <p class="hint">Gera base_atualizada_YYYY-MM-DD_HHMMSS.xlsx com os registros carregados e metadados.</p>
+          <button id="btnExportBaseXlsx">Baixar base.xlsx atualizado</button>
+          <p class="hint">Use esta planilha para substituir o arquivo base.xlsx publicado no GitHub Pages.</p>
+        </div>
       </div>
 
       <div id="view-loterica" class="view hidden">
@@ -215,11 +230,75 @@
     </section>
 
   </main>
-
   <footer class="foot">
     <span>DESENVOLVIDO POR MANOEL CEC-OI.</span>
-	<span>ESTAMOS TRABALHANDO PARA MELHOR ATENDE-LOS</span>
+    <span>ESTAMOS TRABALHANDO PARA MELHOR ATENDE-LOS</span>
   </footer>
+  </div>
+
+  <aside class="appearance-drawer" id="appearanceDrawer">
+    <header>
+      <h3>Aparência</h3>
+      <button type="button" id="appearanceClose" class="icon-button" aria-label="Fechar painel">×</button>
+    </header>
+    <div class="appearance-section">
+      <label>Modo</label>
+      <div class="appearance-control-group">
+        <label>
+          <input type="radio" name="appearanceMode" value="system" />
+          Seguir sistema
+        </label>
+        <label>
+          <input type="radio" name="appearanceMode" value="light" />
+          Claro
+        </label>
+        <label>
+          <input type="radio" name="appearanceMode" value="dark" />
+          Escuro
+        </label>
+      </div>
+    </div>
+    <div class="appearance-section">
+      <label for="appearancePrimaryColor">Cor primária</label>
+      <div class="color-field">
+        <input id="appearancePrimaryColor" type="color" value="#60a5fa" />
+        <input id="appearancePrimaryHex" type="text" maxlength="7" />
+      </div>
+    </div>
+    <div class="appearance-section">
+      <label for="appearanceSecondaryColor">Cor secundária</label>
+      <div class="color-field">
+        <input id="appearanceSecondaryColor" type="color" value="#a855f7" />
+        <input id="appearanceSecondaryHex" type="text" maxlength="7" />
+      </div>
+    </div>
+    <div class="appearance-section">
+      <label>Densidade</label>
+      <div class="appearance-control-group">
+        <label>
+          <input type="radio" name="appearanceDensity" value="comfortable" />
+          Confortável
+        </label>
+        <label>
+          <input type="radio" name="appearanceDensity" value="compact" />
+          Compacto
+        </label>
+      </div>
+    </div>
+    <div class="appearance-section">
+      <div class="preview-row">
+        <span class="chip preview-chip--primary">Primária</span>
+        <span class="chip preview-chip--secondary">Secundária</span>
+        <button type="button" class="chip preview-chip--button">Botão</button>
+      </div>
+      <p class="hint">Prévia rápida de chips, tab e botão.</p>
+    </div>
+    <div class="appearance-section">
+      <button type="button" id="appearanceReset">Restaurar padrão</button>
+    </div>
+  </aside>
+  <div class="drawer-backdrop" id="appearanceBackdrop"></div>
+  <div id="snackbar" class="snackbar" role="status" aria-live="polite"></div>
 
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="db.js"></script>
@@ -227,6 +306,7 @@
   <script src="search.js"></script>
   <script src="fields.js"></script>
   <script src="masks.js"></script>
+  <script type="module" src="src/theme/themeStore.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

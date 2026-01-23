@@ -492,6 +492,75 @@ async function autoLoadBaseXlsx(){
   }
 }
 
+function buildExportTimestamp(){
+  const now = new Date();
+  const pad = (value)=> String(value).padStart(2,'0');
+  return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+
+function workbookToBlob(workbook){
+  const arrayBuffer = XLSX.write(workbook, {bookType:'xlsx', type:'array'});
+  return new Blob([arrayBuffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+
+function getExportColumns(records){
+  const keys = new Set();
+  for(const record of records){
+    Object.keys(record || {}).forEach((key)=> keys.add(key));
+  }
+  if(!keys.has('cod_ul')) keys.add('cod_ul');
+  return Array.from(keys).sort();
+}
+
+function buildExportRows(records, columns){
+  return records.map((record)=>{
+    const row = {};
+    for(const col of columns){
+      row[col] = record[col] !== undefined ? record[col] : '';
+    }
+    return row;
+  });
+}
+
+async function exportBaseAsXlsx(){
+  try{
+    if(!DB) throw new Error('Base local indisponível.');
+    const records = await getAllRecords(DB);
+    if(!records.length){
+      window.showSnackbar?.('Nenhum registro para exportar', {variant: 'error'});
+      return;
+    }
+    const columns = getExportColumns(records);
+    const workbook = XLSX.utils.book_new();
+    const baseSheet = XLSX.utils.json_to_sheet(buildExportRows(records, columns), {header: columns});
+    XLSX.utils.book_append_sheet(workbook, baseSheet, 'BASE');
+    const meta = await getMeta(DB, META_IMPORT);
+    const metaRows = [
+      {key: 'lastUpdate', value: meta && meta.importedAt ? meta.importedAt : new Date().toISOString()},
+      {key: 'recordCount', value: records.length},
+      {key: 'source', value: meta && meta.source ? meta.source : 'local'},
+    ];
+    const metaSheet = XLSX.utils.json_to_sheet(metaRows, {header: ['key','value']});
+    XLSX.utils.book_append_sheet(workbook, metaSheet, 'META');
+    const blob = workbookToBlob(workbook);
+    const filename = `base_atualizada_${buildExportTimestamp()}.xlsx`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }, 1500);
+    window.showSnackbar?.('Base exportada ✅');
+  } catch (err){
+    console.error(err);
+    window.showSnackbar?.('Falha ao exportar a base', {variant: 'error'});
+  }
+}
+
 function activateTab(tab){
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   for(const v of VIEWS){
@@ -1052,6 +1121,10 @@ async function wireUI(){
       console.error(err);
       setStatus('#importStatus', ['Falha ao importar JSON.']);
     }
+  });
+
+  $('#btnExportBaseXlsx').addEventListener('click', async ()=>{
+    await exportBaseAsXlsx();
   });
 
   $('#btnFillSelected').addEventListener('click', ()=>{

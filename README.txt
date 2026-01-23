@@ -40,3 +40,13 @@ Observacoes:
 - Persistencia principal: IndexedDB (lotericasDB / records / meta)
 - localStorage usado apenas para preferencias (ultima busca, template, observacao)
 - Nao envia dados para a internet
+
+Preferencias de aparencia:
+- O painel "Aparência" fica acessível pelo ícone de paleta no canto superior direito.
+- As escolhas (modo: system/light/dark, cores primary/secondary e densidade comfortable/compact) são salvas no localStorage com as chaves `theme_mode`, `theme_primary`, `theme_secondary` e `theme_density`.
+- Cores podem ser digitadas como `#RGB` ou `#RRGGBB` e são normalizadas imediatamente. O tema do AppBar, botões, tabs e chips acompanha as seleções em tempo real, mantendo contraste adequado.
+
+Exportar XLSX atualizado:
+- Dentro da aba "Importar base (XLSX)" há um card "Exportar base atualizada" com o botão "Baixar base.xlsx atualizado".
+- O download gera um arquivo `base_atualizada_YYYY-MM-DD_HHMMSS.xlsx` contendo uma planilha BASE com os registros atuais (colunas normalizadas) e uma planilha META com `lastUpdate`, `recordCount` e `source`.
+- Use esse arquivo para substituir o `base.xlsx` publicado no repositório/GitHub Pages, já que o Pages serve apenas arquivos estáticos e não grava em tempo de execução.
