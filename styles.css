@@ -388,14 +388,14 @@ button.ghost {
 }
 
 .kv .k {
-  color: var(--text-secondary);
+  color: var(--primary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .kv .v {
-  color: var(--primary);
-  font-weight: 700;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .cmds {
