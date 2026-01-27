@@ -33,6 +33,9 @@ const AUTO_BASE_URL = './base.xlsx';
 const AUTO_BASE_WARNING = 'Base automática não encontrada. Use Importar XLSX.';
 const AUTO_LAST_UPDATE_EMPTY = 'Última atualização: nunca';
 const LOCAL_CHANGES_KEY = 'local_changes_pending';
+const LOCAL_CHANGE_MESSAGE = 'Alteração salva localmente ✅ — base oficial atualiza na sexta-feira.';
+const FRIDAY_BANNER_KEY = 'auth_banner_hide_until';
+const FRIDAY_BANNER_DURATION = 7 * 24 * 60 * 60 * 1000;
 let AUTO_LOAD_IN_PROGRESS = false;
 
 const $ = (sel) => document.querySelector(sel);
@@ -85,6 +88,44 @@ function setLocalChangesBadge(pending, persist = true){
   if(badge){
     badge.classList.toggle('hidden', !pending);
   }
+  if(pending && persist){
+    notifyLocalSave();
+  }
+}
+
+function notifyLocalSave(){
+  window.showSnackbar?.(LOCAL_CHANGE_MESSAGE);
+}
+
+function shouldShowFridayBanner(){
+  const stored = Number(localStorage.getItem(FRIDAY_BANNER_KEY));
+  if(Number.isNaN(stored)){
+    return true;
+  }
+  return Date.now() >= stored;
+}
+
+function updateFridayBannerVisibility(){
+  const banner = $('#fridayBanner');
+  if(!banner) return;
+  const show = shouldShowFridayBanner();
+  banner.classList.toggle('hidden', !show);
+  document.body.classList.toggle('banner-visible', show);
+}
+
+function initFridayBanner(){
+  const banner = $('#fridayBanner');
+  if(!banner) return;
+  const dismiss = $('#fridayBannerDismiss');
+  if(dismiss){
+    dismiss.addEventListener('click', ()=>{
+      const until = Date.now() + FRIDAY_BANNER_DURATION;
+      localStorage.setItem(FRIDAY_BANNER_KEY, String(until));
+      banner.classList.add('hidden');
+      document.body.classList.remove('banner-visible');
+    });
+  }
+  updateFridayBannerVisibility();
 }
 
 function loadLocalChangesState(){
@@ -1197,6 +1238,7 @@ async function wireUI(){
     setStatus('#ulStatus', [`Registro ${code} excluido.`]);
     setLocalChangesBadge(true);
   });
+  initFridayBanner();
   loadLocalChangesState();
 }
 

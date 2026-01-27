@@ -9,6 +9,10 @@
 </head>
 <body>
   <div class="app-shell">
+    <div id="fridayBanner" class="friday-banner hidden">
+      <span>Alterações feitas aqui são locais nesta máquina. A base oficial será carregada toda sexta-feira.</span>
+      <button id="fridayBannerDismiss" class="ghost">Entendi</button>
+    </div>
     <header class="app-bar">
       <div class="app-title">
         <img class="app-title__logo" src="./favicon.svg" alt="" aria-hidden="true" />
@@ -24,6 +28,11 @@
             <path d="M12 2a9 9 0 0 0-9 9.18c0 4.3 3.49 7.82 7.78 7.82a1 1 0 0 1 .93 1.4c-.3.78.23 1.7 1.06 1.7h.02c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-4.5 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-4.5 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" fill="currentColor"/>
           </svg>
         </button>
+        <div id="authInfo" class="auth-info hidden">
+          <span id="authLabel">Logado:</span>
+          <span id="authRoleBadge" class="badge auth-badge hidden">ADM</span>
+          <button id="authSignOut" class="ghost">Sair</button>
+        </div>
       </div>
     </header>
 
@@ -298,6 +307,12 @@
   <div class="drawer-backdrop" id="appearanceBackdrop"></div>
   <div id="snackbar" class="snackbar" role="status" aria-live="polite"></div>
 
+  <script src="auth.js"></script>
+  <script>
+    if (window.requireAuthOrRedirect) {
+      window.requireAuthOrRedirect();
+    }
+  </script>
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="db.js"></script>
   <script src="importer.js"></script>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - Consulta Lotericas</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
+</head>
+<body class="auth-page">
+  <div class="auth-shell">
+    <div class="auth-card">
+      <h1>Consulta Lotericas</h1>
+      <p>Controle local de acesso. Informe seu ID.</p>
+      <form id="loginForm">
+        <div class="auth-fieldset">
+          <label for="loginId">ID</label>
+          <input id="loginId" type="text" inputmode="numeric" pattern="\d*" maxlength="6" autocomplete="username" required />
+        </div>
+        <div class="auth-fieldset">
+          <label for="loginPassword">Senha</label>
+          <input id="loginPassword" type="password" autocomplete="current-password" required />
+        </div>
+        <p id="loginError" class="auth-error" aria-live="polite"></p>
+        <div class="auth-actions">
+          <button type="submit">Entrar</button>
+        </div>
+      </form>
+      <p class="auth-hint">Senha padrão: <strong>Oi@12345</strong>. Primeira vez exige troca.</p>
+    </div>
+  </div>
+  <script src="auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('loginForm');
+      const errorField = document.getElementById('loginError');
+      const idInput = document.getElementById('loginId');
+      const passwordInput = document.getElementById('loginPassword');
+
+      const redirectIfAuthenticated = () => {
+        const user = window.getSessionUser ? window.getSessionUser() : null;
+        if (!user) {
+          return;
+        }
+        if (user.mustChangePassword) {
+          window.location.href = 'change-password.html';
+        } else {
+          window.location.href = 'index.html';
+        }
+      };
+
+      redirectIfAuthenticated();
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorField.textContent = '';
+        const id = idInput.value.trim();
+        const password = passwordInput.value;
+        if (!id) {
+          errorField.textContent = 'Informe o ID.';
+          return;
+        }
+        if (!password) {
+          errorField.textContent = 'Informe a senha.';
+          return;
+        }
+        try {
+          const user = await window.signIn({ id, password });
+          if (user.mustChangePassword) {
+            window.location.href = 'change-password.html';
+          } else {
+            window.location.href = 'index.html';
+          }
+        } catch (err) {
+          errorField.textContent = err && err.message ? err.message : 'Falha ao efetuar login.';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
