@@ -821,10 +821,10 @@ function tryAutoSelectFromQuery(query){
   for(const code of candidates){
     if(INDEX.mapByCodUl.has(code)){
       const record = INDEX.mapByCodUl.get(code);
-      const name = pickField(record, ['nome_loterica','NOME DA LOTERICA','NOME UL']);
-      const safeCode = escapeHtml(code);
-      const safeName = name ? ` - ${escapeHtml(name)}` : '';
-      const message = `Loterica selecionada: <code>${safeCode}</code>${safeName}`;
+    const name = pickField(record, ['nome_loterica','NOME DA LOTERICA','NOME UL']);
+    const safeCode = escapeHtml(code);
+    const safeName = name ? `<span class="results-highlight">${escapeHtml(name)}</span>` : '';
+    const message = `Loterica selecionada: <code class="results-highlight">${safeCode}</code>${name ? ` - ${safeName}` : ''}`;
       selectRecord(code, {feedback: message});
       return true;
     }

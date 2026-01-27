@@ -398,6 +398,21 @@ button.ghost {
   font-weight: 600;
 }
 
+.results-highlight {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.search-row .label {
+  color: var(--primary);
+  letter-spacing: 0.2em;
+}
+
+.results .hint strong,
+.search-row .hint strong {
+  color: var(--primary);
+}
+
 .cmds {
   display: grid;
   gap: 10px;
