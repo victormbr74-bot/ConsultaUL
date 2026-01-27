@@ -107,6 +107,11 @@ body.banner-visible .app-bar {
   text-transform: uppercase;
 }
 
+.auth-info span {
+  color: var(--primary);
+  font-weight: 600;
+}
+
 .app-title {
   display: flex;
   align-items: center;
@@ -121,6 +126,8 @@ body.banner-visible .app-bar {
 .app-title__text {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .app-title__text strong {
@@ -370,6 +377,7 @@ button.ghost {
   letter-spacing: 0.2em;
   font-size: 0.85rem;
   text-transform: uppercase;
+  text-align: center;
 }
 
 .kv {
@@ -386,8 +394,8 @@ button.ghost {
 }
 
 .kv .v {
-  color: var(--text-primary);
-  font-weight: 600;
+  color: var(--primary);
+  font-weight: 700;
 }
 
 .cmds {
