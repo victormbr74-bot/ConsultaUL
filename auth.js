@@ -296,7 +296,7 @@ function renderAuthStatus(profile) {
     container.classList.toggle('hidden', !profile);
   }
   if (label) {
-    label.textContent = profile ? `Logado: ${profile.name} (${profile.id})` : '';
+    label.textContent = profile ? 'Logado: ' + profile.name + ' (' + profile.id + ')' : '';
   }
   if (badge) {
     badge.classList.toggle('hidden', !(profile && profile.role === 'admin'));
