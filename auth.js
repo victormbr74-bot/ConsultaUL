@@ -185,6 +185,7 @@ function renderAuthStatus(user) {
   const badge = document.getElementById('authRoleBadge');
   const container = document.getElementById('authInfo');
   const signOutButton = document.getElementById('authSignOut');
+  const changePasswordButton = document.getElementById('authChangePassword');
   if (container) {
     container.classList.toggle('hidden', !user);
   }
@@ -199,6 +200,15 @@ function renderAuthStatus(user) {
     signOutButton.onclick = (event) => {
       event.preventDefault();
       signOut();
+    };
+  }
+  if (changePasswordButton) {
+    changePasswordButton.disabled = !user;
+    changePasswordButton.onclick = (event) => {
+      event.preventDefault();
+      if (user) {
+        window.location.href = 'change-password.html';
+      }
     };
   }
 }
@@ -275,10 +285,6 @@ function requireAuthOrRedirect({ allowChangePasswordPage = false, loginPath = 'l
   }
   if (user.mustChangePassword && !allowChangePasswordPage) {
     window.location.href = 'change-password.html';
-    return null;
-  }
-  if (!user.mustChangePassword && allowChangePasswordPage) {
-    window.location.href = 'index.html';
     return null;
   }
   renderAuthStatus(user);
