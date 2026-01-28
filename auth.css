@@ -113,6 +113,21 @@ body.auth-page {
   width: 100%;
 }
 
+.auth-link-row {
+  margin-top: 10px;
+}
+
+.auth-card .auth-link {
+  width: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 @media (max-width: 480px) {
   .auth-card {
     padding: 24px;
