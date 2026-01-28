@@ -27,7 +27,11 @@
           <button type="submit">Entrar</button>
         </div>
       </form>
-      <p class="auth-hint">Senha padrão: <strong>Oi@12345</strong>. Primeira vez exige troca.</p>
+      <div class="auth-link-row">
+        <button type="button" class="auth-link" id="forgotPassword">Esqueci minha senha</button>
+      </div>
+      <p class="auth-hint" id="forgotPasswordHint"></p>
+      <p class="auth-hint">Senha padrÃ£o: <strong>Oi@12345</strong>. Primeira vez exige troca.</p>
     </div>
   </div>
   <script src="auth.js"></script>
@@ -37,6 +41,8 @@
       const errorField = document.getElementById('loginError');
       const idInput = document.getElementById('loginId');
       const passwordInput = document.getElementById('loginPassword');
+      const forgotButton = document.getElementById('forgotPassword');
+      const forgotHint = document.getElementById('forgotPasswordHint');
 
       const redirectIfAuthenticated = () => {
         const user = window.getSessionUser ? window.getSessionUser() : null;
@@ -51,6 +57,14 @@
       };
 
       redirectIfAuthenticated();
+      if (forgotButton) {
+        forgotButton.addEventListener('click', () => {
+          errorField.textContent = '';
+          if (forgotHint) {
+            forgotHint.textContent = 'Procure o administrador para solicitar a troca da senha.';
+          }
+        });
+      }
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
