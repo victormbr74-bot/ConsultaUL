@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
@@ -16,10 +16,10 @@
       <form id="loginForm">
         <div class="auth-fieldset">
           <label for="loginId">ID</label>
-          <input id="loginId" type="text" inputmode="numeric" pattern="\d*" maxlength="6" autocomplete="username" placeholder="ID sem OI"required />
+          <input id="loginId" type="text" inputmode="numeric" pattern="\d*" maxlength="6" autocomplete="username" placeholder="ID sem OI" required />
         </div>
         <div class="auth-fieldset">
-          <label for="loginPassword" >Senha</label>
+          <label for="loginPassword">Senha</label>
           <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Oi@12345" required />
         </div>
         <p id="loginError" class="auth-error" aria-live="polite"></p>
@@ -27,38 +27,84 @@
           <button type="submit">Entrar</button>
         </div>
       </form>
-      <p class="auth-hint">Senha padr�o: <strong>Oi@12345</strong>. Primeira vez exige troca.</p>
+      <p class="auth-hint">Senha padrão: <strong>Oi@12345</strong>. Troca obrigatória no primeiro acesso.</p>
+      <div class="auth-footer">
+        <button type="button" id="forgotLink" class="ghost">Esqueci a senha?</button>
+      </div>
     </div>
   </div>
+  <div class="auth-modal" id="forgotModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+    <div class="auth-modal__overlay" data-forgot-close></div>
+    <div class="auth-modal__card">
+      <h2 id="forgotTitle">Solicitar reset de senha</h2>
+      <p class="auth-hint">Informe seu ID e, se quiser, um motivo. O ADM aprovará o pedido.</p>
+      <form id="forgotForm">
+        <div class="auth-fieldset">
+          <label for="forgotId">ID</label>
+          <input id="forgotId" type="text" inputmode="numeric" pattern="\d*" maxlength="6" autocomplete="off" required />
+        </div>
+        <div class="auth-fieldset">
+          <label for="forgotReason">Motivo / observação (opcional)</label>
+          <textarea id="forgotReason" rows="3"></textarea>
+        </div>
+        <p class="auth-error" id="forgotError" aria-live="polite"></p>
+        <p class="auth-hint" id="forgotStatus" aria-live="polite"></p>
+        <div class="auth-actions">
+          <button type="submit">Solicitar reset</button>
+          <button type="button" class="ghost" data-forgot-close>Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script type="module" src="src/firebaseClient.js"></script>
   <script src="auth.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      if (window.requireAuthOrRedirect) {
+        window.requireAuthOrRedirect({ allowChangePasswordPage: true }).catch(() => {});
+      }
       const form = document.getElementById('loginForm');
       const errorField = document.getElementById('loginError');
       const idInput = document.getElementById('loginId');
       const passwordInput = document.getElementById('loginPassword');
+      const forgotLink = document.getElementById('forgotLink');
+      const forgotModal = document.getElementById('forgotModal');
+      const forgotForm = document.getElementById('forgotForm');
+      const forgotError = document.getElementById('forgotError');
+      const forgotStatus = document.getElementById('forgotStatus');
+      const forgotOverlay = forgotModal?.querySelector('[data-forgot-close]');
+      const forgotIdInput = document.getElementById('forgotId');
+      const forgotReason = document.getElementById('forgotReason');
+      const closeForgotNodes = forgotModal?.querySelectorAll('[data-forgot-close]');
 
-      const redirectIfAuthenticated = () => {
-        const user = window.getSessionUser ? window.getSessionUser() : null;
-        if (!user) {
+      const toggleForgot = (open) => {
+        if (!forgotModal) {
           return;
         }
-        if (user.mustChangePassword) {
-          window.location.href = 'change-password.html';
-        } else {
-          window.location.href = 'index.html';
+        forgotModal.classList.toggle('auth-modal--open', open);
+        forgotModal.setAttribute('aria-hidden', open ? 'false' : 'true');
+        if (open) {
+          forgotError.textContent = '';
+          forgotStatus.textContent = '';
+          forgotIdInput?.focus();
         }
       };
 
-      redirectIfAuthenticated();
+      closeForgotNodes?.forEach((node) => {
+        node.addEventListener('click', () => toggleForgot(false));
+      });
+      forgotLink?.addEventListener('click', () => toggleForgot(true));
+      forgotOverlay?.addEventListener('click', () => toggleForgot(false));
 
-      form.addEventListener('submit', async (event) => {
+      window.waitForAllowedUsers?.().catch(() => {});
+
+      form?.addEventListener('submit', async (event) => {
         event.preventDefault();
         errorField.textContent = '';
         const id = idInput.value.trim();
         const password = passwordInput.value;
         if (!id) {
-          errorField.textContent = 'Informe o ID sem OI.';
+          errorField.textContent = 'Informe o ID.';
           return;
         }
         if (!password) {
@@ -67,13 +113,40 @@
         }
         try {
           const user = await window.signIn({ id, password });
-          if (user.mustChangePassword) {
+          if (user?.mustChangePassword) {
             window.location.href = 'change-password.html';
           } else {
             window.location.href = 'index.html';
           }
         } catch (err) {
-          errorField.textContent = err && err.message ? err.message : 'Falha ao efetuar login.';
+          errorField.textContent = err?.message || 'Falha ao efetuar login.';
+        }
+      });
+
+      forgotForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        forgotError.textContent = '';
+        forgotStatus.textContent = '';
+        const id = forgotIdInput.value.trim();
+        const note = forgotReason.value.trim();
+        if (!id) {
+          forgotError.textContent = 'Informe o ID para solicitar o reset.';
+          return;
+        }
+        const submitButton = forgotForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+          submitButton.disabled = true;
+        }
+        try {
+          await window.submitPasswordResetRequest({ id, note });
+          forgotStatus.textContent = 'Solicitação enviada. O ADM irá liberar acesso.';
+          setTimeout(() => toggleForgot(false), 2000);
+        } catch (err) {
+          forgotError.textContent = err?.message || 'Falha ao enviar a solicitação.';
+        } finally {
+          if (submitButton) {
+            submitButton.disabled = false;
+          }
         }
       });
     });

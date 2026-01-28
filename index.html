@@ -10,7 +10,7 @@
 <body>
   <div class="app-shell">
     <div id="fridayBanner" class="friday-banner hidden">
-      <span>Alterações feitas aqui são locais nesta máquina. A base oficial será carregada toda sexta-feira.</span>
+      <span>Alterações feitas aqui são locais. A base oficial será carregada toda sexta-feira.</span>
       <button id="fridayBannerDismiss" class="ghost">Entendi</button>
     </div>
     <header class="app-bar">
@@ -307,6 +307,7 @@
   <div class="drawer-backdrop" id="appearanceBackdrop"></div>
   <div id="snackbar" class="snackbar" role="status" aria-live="polite"></div>
 
+  <script type="module" src="src/firebaseClient.js"></script>
   <script src="auth.js"></script>
   <script>
     if (window.requireAuthOrRedirect) {

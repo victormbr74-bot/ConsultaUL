@@ -1,201 +1,308 @@
-const AUTH_USERS_KEY = 'auth_users_v1';
-const AUTH_SESSION_KEY = 'auth_session_v1';
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
-const DEFAULT_PASSWORD = 'Oi@12345';
+﻿const DEFAULT_PASSWORD = 'Oi@12345';
+const USER_LIST_URL = './data/users.json';
+const EMAIL_DOMAIN = 'oi.local';
+const FirebaseClient = window.FirebaseClient;
 
-const USERS = [
-  { id: "329897", name: "Eduardo Mota Batista", role: "user" },
-  { id: "418073", name: "Jussimara Santos Nascimento Almeida", role: "user" },
-  { id: "418074", name: "Nermi Gomes Mende", role: "user" },
-  { id: "414923", name: "Nilo Martins Da Paixao", role: "user" },
-  { id: "414838", name: "Rita de Cassia Oliveira Passos dos Santos", role: "user" },
-  { id: "457348", name: "Anabelly Cris Silva", role: "user" },
-  { id: "457138", name: "Ariadna Almeida da Silva", role: "user" },
-  { id: "418144", name: "Attos Filipe Da Silva Quaresma", role: "user" },
-  { id: "418274", name: "Bruno Henrique Cunha Pessoa", role: "user" },
-  { id: "457344", name: "Caroline Victoria Marques de Oliveira", role: "user" },
-  { id: "418103", name: "Daniel Ferreira Guedes", role: "user" },
-  { id: "370431", name: "Debora Vieira dos Anjos", role: "user" },
-  { id: "457160", name: "Elizabeth Yorane Pereira Maia", role: "user" },
-  { id: "418275", name: "Elvikiss Anjos Moura", role: "user" },
-  { id: "333012", name: "Fabricio Gonçalves de Oliveira", role: "user" },
-  { id: "418072", name: "Giuliano Ribeiro de Souza", role: "user" },
-  { id: "418114", name: "Golper Sales Da Silva", role: "user" },
-  { id: "457111", name: "Henrique Souza Alves", role: "user" },
-  { id: "418856", name: "Jesus Cardoso de Araújo", role: "user" },
-  { id: "418254", name: "Jose Welington Galdino De Arruda", role: "user" },
-  { id: "457117", name: "Leandro Barbosa Mota", role: "user" },
-  { id: "457134", name: "Lorrane Silva do Espirito Santo", role: "user" },
-  { id: "457112", name: "Lucas Brandão da Silva", role: "user" },
-  { id: "457110", name: "Marcos Akira Essaki", role: "user" },
-  { id: "457345", name: "Marcos Danniel Gonçalves da Silva", role: "user" },
-  { id: "457139", name: "Natália Pimenta de Silva", role: "user" },
-  { id: "414767", name: "Nathália Andrade D'Azevedo", role: "user" },
-  { id: "418076", name: "Neudmar Almeida Souza", role: "user" },
-  { id: "457136", name: "Nicoly Cristine Chiovato Belo", role: "user" },
-  { id: "457346", name: "Pedro Gabriel Cardoso dos Santos", role: "user" },
-  { id: "339045", name: "Renata Adrielly Dantas", role: "user" },
-  { id: "419261", name: "Rodrigo Nunes da Silva", role: "user" },
-  { id: "457347", name: "Ryan Oliveira Soares", role: "user" },
-  { id: "457169", name: "Samara De Paiva Pontes", role: "user" },
-  { id: "419216", name: "Ronivon Nunes Figueiredo", role: "user" },
-  { id: "405883", name: "Sergio Celso De Souza", role: "user" },
-  { id: "419357", name: "Francisco Ferreira Silva", role: "user" },
-  { id: "418078", name: "Sidney Silva Neiva", role: "user" },
-  { id: "457133", name: "Sarli Cristina Souza e Silva", role: "user" },
-  { id: "457118", name: "Washington Ferreira de Souza", role: "user" },
-  { id: "304326", name: "Antonio Estanislau", role: "user" },
-  { id: "457135", name: "Arinos André de Moraes Nascimento", role: "user" },
-  { id: "403214", name: "Claudio Garcia da Silva", role: "user" },
-  { id: "457113", name: "Davi Artur da Silva Borba", role: "user" },
-  { id: "457116", name: "Denver Nascimento Barros", role: "user" },
-  { id: "419525", name: "Eder Simões Duarte Da Silva", role: "user" },
-  { id: "457159", name: "Ehrica Rhaissa Oliveira de Souza", role: "user" },
-  { id: "368972", name: "Jacyara Lima Afonseca", role: "user" },
-  { id: "419551", name: "José Henrique Ferreira Mendes", role: "user" },
-  { id: "457158", name: "Juan Gabriel Veras Bento", role: "user" },
-  { id: "457115", name: "Matheus José de Carvalho Lopes", role: "user" },
-  { id: "274612", name: "Rafael Pereira Gomes", role: "user" },
-  { id: "418088", name: "Wesley Fernandes da Fonseca Rodrigues", role: "user" },
-  { id: "418124", name: "William Faria Moreira", role: "user" },
-  { id: "418115", name: "Francisco De Assis Ribeiro De Araujo", role: "user" },
-  { id: "419523", name: "Gustavo Alves Da Costa", role: "user" },
-  { id: "418262", name: "Lucas Nunes De Oliveira", role: "user" },
-  { id: "419221", name: "Max Jonathan da Mata Oliveira", role: "user" },
-  { id: "419629", name: "Rafael Pontes Vieira", role: "user" },
-  { id: "418268", name: "Rener Guedes De Assis Silva Kravczyk", role: "user" },
-  { id: "419554", name: "Robson Alves Rodrigues", role: "user" },
-  { id: "414925", name: "Thiago Dos Passos Sousa", role: "user" },
-  { id: "457140", name: "Tiago Alves de Carvalho", role: "user" },
-  { id: "457157", name: "Tiago Lacerda de Brito", role: "user" },
-  { id: "418857", name: "Wallace Farias Machado", role: "user" },
-  { id: "418265", name: "Walter Santos Souza", role: "user" },
-  { id: "414888", name: "Wilton Dantas Pereira", role: "user" },
-  { id: "418068", name: "Amilton Oliveira Delgado", role: "user" },
-  { id: "418117", name: "Neliton Pereira Machado Marques", role: "user" },
-  { id: "418852", name: "Claudio Soares Mendes", role: "user" },
-  { id: "310949", name: "Glauber Luciano Alves de Souza", role: "user" },
-  { id: "418118", name: "Manoel Victor Da Costa Barros", role: "admin" },  // ADM
-  { id: "308514", name: "Marcio Edenil José Almeida", role: "user" },
-  { id: "368101", name: "Marcio Rodrigues da Cunha", role: "user" },
-  { id: "367682", name: "Josue Almeida Lima", role: "user" },
-  { id: "403291", name: "Wanderson André Almeida", role: "user" },
-  { id: "457059", name: "Angêla Neli Heredias Santos", role: "user" },
-  { id: "418071", name: "Camilo Borges Dias", role: "user" },
-  { id: "369035", name: "Cristiano de Lelis Silva", role: "user" },
-  { id: "418264", name: "Ericson Policarpo Gonzaga", role: "user" },
-  { id: "312120", name: "Greiciane Beatriz Rodrigues Silva", role: "user" },
-  { id: "308213", name: "Edson Domingos Moreira de Jesus", role: "user" },
-  { id: "340882", name: "Rodrigo Pereira dos Santos de Oliveira", role: "user" },
-  { id: "273214", name: "Fabiano Soares Silva", role: "user" }
-];
+if (!FirebaseClient) {
+  console.error('Firebase client não inicializado antes de auth.js');
+}
 
+const state = {
+  definitions: new Map(),
+  definitionsLoaded: false,
+  definitionsPromise: null,
+  profile: null,
+  profilePromise: null,
+  authReadyPromise: null,
+  authReadyResolve: null,
+  authReadyResolved: false,
+};
 
-function parseJson(value) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
+state.authReadyPromise = new Promise((resolve) => {
+  state.authReadyResolve = resolve;
+});
+
+function markAuthReady() {
+  if (!state.authReadyResolved) {
+    state.authReadyResolved = true;
+    if (state.authReadyResolve) {
+      state.authReadyResolve();
+    }
   }
-}
-
-function readStoredUsers() {
-  const raw = localStorage.getItem(AUTH_USERS_KEY);
-  const parsed = parseJson(raw);
-  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-}
-
-function persistStoredUsers(users) {
-  try {
-    localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
-  } catch {
-    // ignore storage errors
-  }
-}
-
-async function sha256(text) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text || '');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-function findUserDefinition(id) {
-  return USERS.find((user) => user.id === id) || null;
-}
-
-async function createStoredUser(definition) {
-  const now = new Date().toISOString();
-  const hash = await sha256(DEFAULT_PASSWORD);
-  return {
-    ...definition,
-    passHash: hash,
-    mustChangePassword: true,
-    createdAt: now,
-    updatedAt: now,
-  };
 }
 
 function normalizeId(value) {
   return String(value || '').trim();
 }
 
-function getSession() {
-  const raw = localStorage.getItem(AUTH_SESSION_KEY);
-  if (!raw) {
-    return null;
-  }
-  const session = parseJson(raw);
-  if (!session || !session.id || !session.expiresAt) {
-    clearSession();
-    return null;
-  }
-  if (Date.now() >= session.expiresAt) {
-    clearSession();
-    return null;
-  }
-  return session;
+function formatEmail(id) {
+  return ${id}@;
 }
 
-function setSession(id) {
-  const now = Date.now();
-  const payload = {
-    id,
-    issuedAt: now,
-    expiresAt: now + SESSION_TTL_MS,
+function translateFirebaseError(error) {
+  if (!error || !error.code) {
+    return null;
+  }
+  const map = {
+    'auth/user-not-found': 'ID ou senha inválidos.',
+    'auth/wrong-password': 'ID ou senha inválidos.',
+    'auth/invalid-email': 'ID inválido.',
+    'auth/user-disabled': 'Conta desativada. Contate o ADM.',
+    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
+    'auth/requires-recent-login': 'É necessário autenticar novamente.',
   };
-  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(payload));
+  return map[error.code] || null;
 }
 
-function clearSession() {
-  localStorage.removeItem(AUTH_SESSION_KEY);
+async function ensureDefinitionsLoaded() {
+  if (state.definitionsLoaded) {
+    return state.definitions;
+  }
+  if (state.definitionsPromise) {
+    return state.definitionsPromise;
+  }
+  state.definitionsPromise = (async () => {
+    const response = await fetch(USER_LIST_URL, { cache: 'no-cache' });
+    if (!response.ok) {
+      throw new Error('Não foi possível carregar a lista de usuários.');
+    }
+    const payload = await response.json();
+    const list = Array.isArray(payload?.users) ? payload.users : [];
+    const map = new Map();
+    list.forEach((entry) => {
+      const normalized = normalizeId(entry.id);
+      if (!normalized) {
+        return;
+      }
+      map.set(normalized, {
+        id: normalized,
+        name: entry.name || normalized,
+        role: entry.role || 'user',
+      });
+    });
+    state.definitions = map;
+    state.definitionsLoaded = true;
+    return map;
+  })().finally(() => {
+    state.definitionsPromise = null;
+  });
+  return state.definitionsPromise;
 }
 
-function getSessionUser() {
-  const session = getSession();
-  if (!session) {
+async function fetchProfileFromFirestore(firebaseUser) {
+  if (!FirebaseClient) {
+    throw new Error('Firebase não está disponível.');
+  }
+  const docRef = FirebaseClient.doc(FirebaseClient.db, 'users', firebaseUser.uid);
+  const snapshot = await FirebaseClient.getDoc(docRef);
+  if (!snapshot.exists()) {
+    throw new Error('Perfil de usuário não encontrado no Firestore.');
+  }
+  await ensureDefinitionsLoaded();
+  const data = snapshot.data() || {};
+  const normalizedId = normalizeId(data.id || '');
+  if (!normalizedId) {
+    throw new Error('Dados de autenticação incompletos.');
+  }
+  const definition = state.definitions.get(normalizedId);
+  if (!definition) {
+    throw new Error('ID não autorizado. Contate o ADM.');
+  }
+  return {
+    uid: firebaseUser.uid,
+    id: normalizedId,
+    email: firebaseUser.email || formatEmail(normalizedId),
+    name: data.name || definition.name,
+    role: data.role || definition.role || 'user',
+    mustChangePassword: Boolean(data.mustChangePassword),
+  };
+}
+
+async function hydrateProfile(force = false) {
+  if (state.profile && !force) {
+    return state.profile;
+  }
+  if (!FirebaseClient || !FirebaseClient.auth) {
     return null;
   }
-  const stored = readStoredUsers();
-  return stored[session.id] || null;
+  const firebaseUser = FirebaseClient.auth.currentUser;
+  if (!firebaseUser) {
+    state.profile = null;
+    return null;
+  }
+  if (state.profilePromise && !force) {
+    return state.profilePromise;
+  }
+  state.profilePromise = (async () => {
+    const profile = await fetchProfileFromFirestore(firebaseUser);
+    state.profile = profile;
+    state.profilePromise = null;
+    renderAuthStatus(profile);
+    return profile;
+  })();
+  return state.profilePromise;
 }
 
-function renderAuthStatus(user) {
+async function signIn({ id, password }) {
+  if (!FirebaseClient || !FirebaseClient.auth) {
+    throw new Error('Firebase não inicializado.');
+  }
+  const normalizedId = normalizeId(id);
+  if (!normalizedId) {
+    throw new Error('Informe o ID.');
+  }
+  if (!password) {
+    throw new Error('Informe a senha.');
+  }
+  const definitions = await ensureDefinitionsLoaded();
+  const definition = definitions.get(normalizedId);
+  if (!definition) {
+    throw new Error('ID inválido ou não autorizado.');
+  }
+  try {
+    await FirebaseClient.signInWithEmailAndPassword(
+      FirebaseClient.auth,
+      formatEmail(normalizedId),
+      password
+    );
+    const profile = await hydrateProfile(true);
+    if (!profile) {
+      throw new Error('Não foi possível carregar o perfil.');
+    }
+    return profile;
+  } catch (error) {
+    const friendly = translateFirebaseError(error);
+    throw new Error(friendly || 'Falha ao autenticar. Tente novamente.');
+  }
+}
+
+async function changePassword(newPassword) {
+  if (!newPassword) {
+    throw new Error('Informe a nova senha.');
+  }
+  if (!FirebaseClient || !FirebaseClient.auth) {
+    throw new Error('Sessão inválida.');
+  }
+  await state.authReadyPromise;
+  const firebaseUser = FirebaseClient.auth.currentUser;
+  if (!firebaseUser) {
+    throw new Error('Sessão inválida.');
+  }
+  try {
+    await FirebaseClient.updatePassword(firebaseUser, newPassword);
+    const userDocRef = FirebaseClient.doc(FirebaseClient.db, 'users', firebaseUser.uid);
+    await FirebaseClient.updateDoc(userDocRef, {
+      mustChangePassword: false,
+      passwordChangedAt: FirebaseClient.serverTimestamp(),
+    });
+    if (state.profile) {
+      state.profile = { ...state.profile, mustChangePassword: false };
+      renderAuthStatus(state.profile);
+    }
+    return state.profile;
+  } catch (error) {
+    const friendly = translateFirebaseError(error);
+    throw new Error(friendly || 'Falha ao atualizar a senha.');
+  }
+}
+
+async function submitPasswordResetRequest({ id, note }) {
+  if (!id) {
+    throw new Error('Informe o ID.');
+  }
+  if (!FirebaseClient || !FirebaseClient.db) {
+    throw new Error('Firebase não está disponível.');
+  }
+  await ensureDefinitionsLoaded();
+  const normalizedId = normalizeId(id);
+  if (!state.definitions.has(normalizedId)) {
+    throw new Error('ID inválido.');
+  }
+  const payload = {
+    createdAt: FirebaseClient.serverTimestamp(),
+    requestedId: normalizedId,
+    requestedEmail: formatEmail(normalizedId),
+    requestedByUid: state.profile?.uid || null,
+    status: 'pending',
+    adminUid: null,
+    adminAt: null,
+    adminNote: '',
+    note: String(note || '').trim(),
+  };
+  await FirebaseClient.addDoc(
+    FirebaseClient.collection(FirebaseClient.db, 'password_reset_requests'),
+    payload
+  );
+  return true;
+}
+
+async function performSignOut() {
+  if (FirebaseClient && FirebaseClient.auth) {
+    try {
+      await FirebaseClient.signOut(FirebaseClient.auth);
+    } catch (error) {
+      console.error('Erro ao sair', error);
+    }
+  }
+  state.profile = null;
+  renderAuthStatus(null);
+}
+
+async function signOut() {
+  await performSignOut();
+  window.location.href = 'login.html';
+}
+
+async function requireAuthOrRedirect({
+  allowChangePasswordPage = false,
+  loginPath = 'login.html',
+  requiredRole = null,
+} = {}) {
+  try {
+    await state.authReadyPromise;
+    const profile = await hydrateProfile();
+    if (!profile) {
+      window.location.href = loginPath;
+      return null;
+    }
+    if (profile.mustChangePassword && !allowChangePasswordPage) {
+      window.location.href = 'change-password.html';
+      return null;
+    }
+    if (!profile.mustChangePassword && allowChangePasswordPage) {
+      window.location.href = 'index.html';
+      return null;
+    }
+    if (requiredRole && profile.role !== requiredRole) {
+      window.location.href = loginPath;
+      return null;
+    }
+    renderAuthStatus(profile);
+    return profile;
+  } catch (error) {
+    console.error('Falha na verificação de autenticação', error);
+    await performSignOut();
+    window.location.href = loginPath;
+    return null;
+  }
+}
+
+function renderAuthStatus(profile) {
   const label = document.getElementById('authLabel');
   const badge = document.getElementById('authRoleBadge');
   const container = document.getElementById('authInfo');
   const signOutButton = document.getElementById('authSignOut');
   if (container) {
-    container.classList.toggle('hidden', !user);
+    container.classList.toggle('hidden', !profile);
   }
   if (label) {
-    label.textContent = user ? `Logado: ${user.name} (${user.id})` : '';
+    label.textContent = profile ? Logado:  () : '';
   }
   if (badge) {
-    badge.classList.toggle('hidden', !(user && user.role === 'admin'));
+    badge.classList.toggle('hidden', !(profile && profile.role === 'admin'));
   }
   if (signOutButton) {
-    signOutButton.disabled = !user;
+    signOutButton.disabled = !profile;
     signOutButton.onclick = (event) => {
       event.preventDefault();
       signOut();
@@ -203,96 +310,45 @@ function renderAuthStatus(user) {
   }
 }
 
-async function ensureStoredUser(id) {
-  const normalized = normalizeId(id);
-  if (!normalized) {
-    return null;
-  }
-  const stored = readStoredUsers();
-  if (stored[normalized]) {
-    return stored[normalized];
-  }
-  const definition = findUserDefinition(normalized);
-  if (!definition) {
-    return null;
-  }
-  const record = await createStoredUser(definition);
-  stored[normalized] = record;
-  persistStoredUsers(stored);
-  return record;
-}
-
-async function signIn({ id, password }) {
-  const normalizedId = normalizeId(id);
-  const definition = findUserDefinition(normalizedId);
-  if (!definition) {
-    throw new Error('ID inválido.');
-  }
-  const storedUser = await ensureStoredUser(normalizedId);
-  if (!storedUser) {
-    throw new Error('ID inválido.');
-  }
-  const hash = await sha256(password);
-  if (hash !== storedUser.passHash) {
-    throw new Error('ID ou senha inválidos.');
-  }
-  setSession(normalizedId);
-  return { ...storedUser };
-}
-
-async function changePassword(newPassword) {
-  const session = getSession();
-  if (!session) {
-    throw new Error('Sessão inválida.');
-  }
-  const stored = readStoredUsers();
-  const user = stored[session.id];
+async function handleAuthStateChanged(user) {
+  markAuthReady();
   if (!user) {
-    throw new Error('Usuário não encontrado.');
+    state.profile = null;
+    renderAuthStatus(null);
+    return;
   }
-  const hash = await sha256(newPassword);
-  const now = new Date().toISOString();
-  const updated = {
-    ...user,
-    passHash: hash,
-    mustChangePassword: false,
-    updatedAt: now,
-  };
-  stored[session.id] = updated;
-  persistStoredUsers(stored);
-  setSession(session.id);
-  return updated;
+  try {
+    await ensureDefinitionsLoaded();
+    const profile = await fetchProfileFromFirestore(user);
+    state.profile = profile;
+    renderAuthStatus(profile);
+  } catch (error) {
+    console.error('Falha ao sincronizar usuário', error);
+    await performSignOut();
+  }
 }
 
-function requireAuthOrRedirect({ allowChangePasswordPage = false, loginPath = 'login.html' } = {}) {
-  const user = getSessionUser();
-  if (!user) {
-    clearSession();
-    if (loginPath) {
-      window.location.href = loginPath;
-    }
-    return null;
-  }
-  if (user.mustChangePassword && !allowChangePasswordPage) {
-    window.location.href = 'change-password.html';
-    return null;
-  }
-  if (!user.mustChangePassword && allowChangePasswordPage) {
-    window.location.href = 'index.html';
-    return null;
-  }
-  renderAuthStatus(user);
-  return user;
+if (FirebaseClient && FirebaseClient.auth && FirebaseClient.onAuthStateChanged) {
+  FirebaseClient.onAuthStateChanged(FirebaseClient.auth, handleAuthStateChanged);
+} else {
+  markAuthReady();
 }
 
-function signOut() {
-  clearSession();
-  window.location.href = 'login.html';
-}
+ensureDefinitionsLoaded().catch(() => {});
 
-window.requireAuthOrRedirect = requireAuthOrRedirect;
 window.signIn = signIn;
 window.changePassword = changePassword;
-window.getSessionUser = getSessionUser;
+window.submitPasswordResetRequest = submitPasswordResetRequest;
+window.requireAuthOrRedirect = requireAuthOrRedirect;
+window.getSessionUser = () => state.profile;
 window.signOut = signOut;
-window.USERS = USERS;
+window.waitForAllowedUsers = ensureDefinitionsLoaded;
+window.authReady = state.authReadyPromise;
+window.DEFAULT_PASSWORD = DEFAULT_PASSWORD;
+
+window.addEventListener('load', () => {
+  const localChangeNotice = 'Alteração salva localmente ✅ — a base oficial será carregada toda sexta-feira.';
+  if (typeof window.notifyLocalSave === 'function') {
+    window.notifyLocalSave = () => window.showSnackbar?.(localChangeNotice);
+  }
+});
