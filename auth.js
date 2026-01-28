@@ -134,6 +134,8 @@ function renderAuthStatus(profile) {
   const badge = document.getElementById('authRoleBadge');
   const container = document.getElementById('authInfo');
   const signOutButton = document.getElementById('authSignOut');
+  const welcomeGreeting = document.getElementById('welcomeGreeting');
+  const welcomeName = document.getElementById('welcomeName');
   if (container) {
     container.classList.toggle('hidden', !profile);
   }
@@ -149,6 +151,12 @@ function renderAuthStatus(profile) {
       event.preventDefault();
       signOut();
     };
+  }
+  if (welcomeName) {
+    welcomeName.textContent = profile ? profile.name : '';
+  }
+  if (welcomeGreeting) {
+    welcomeGreeting.classList.toggle('hidden', !profile);
   }
 }
 
