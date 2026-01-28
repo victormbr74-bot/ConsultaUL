@@ -315,9 +315,11 @@
 
   <script src="auth.js" defer></script>
   <script>
-    if (window.requireAuthOrRedirect) {
-      window.requireAuthOrRedirect();
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.requireAuthOrRedirect) {
+        window.requireAuthOrRedirect();
+      }
+    });
   </script>
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="db.js"></script>
