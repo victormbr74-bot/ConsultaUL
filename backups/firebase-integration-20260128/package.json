@@ -1,0 +1,10 @@
+﻿{
+  "name": "consultaul",
+  "private": true,
+  "scripts": {
+    "create-users": "node scripts/createUsers.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.10.0"
+  }
+}

@@ -1,57 +1,67 @@
 ﻿const DEFAULT_PASSWORD = 'Oi@12345';
 const USER_LIST_URL = './data/users.json';
-const EMAIL_DOMAIN = 'oi.local';
-const FirebaseClient = window.FirebaseClient;
-
-if (!FirebaseClient) {
-  console.error('Firebase client não inicializado antes de auth.js');
-}
+const LOCAL_STATE_KEY = 'consultaul.localAuthState';
+const LOCAL_SESSION_KEY = 'consultaul.localAuthSession';
 
 const state = {
   definitions: new Map(),
   definitionsLoaded: false,
   definitionsPromise: null,
   profile: null,
-  profilePromise: null,
-  authReadyPromise: null,
-  authReadyResolve: null,
-  authReadyResolved: false,
+  defaultPasswordHashPromise: null,
+  authReadyPromise: Promise.resolve(),
 };
-
-state.authReadyPromise = new Promise((resolve) => {
-  state.authReadyResolve = resolve;
-});
-
-function markAuthReady() {
-  if (!state.authReadyResolved) {
-    state.authReadyResolved = true;
-    if (state.authReadyResolve) {
-      state.authReadyResolve();
-    }
-  }
-}
 
 function normalizeId(value) {
   return String(value || '').trim();
 }
 
-function formatEmail(id) {
-  return `${id}@${EMAIL_DOMAIN}`;
+async function hashString(value) {
+  const raw = String(value || '');
+  if (window.crypto?.subtle && window.TextEncoder) {
+    const encoded = new TextEncoder().encode(raw);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', encoded);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
+  }
+  try {
+    return btoa(raw);
+  } catch {
+    return raw;
+  }
 }
 
-function translateFirebaseError(error) {
-  if (!error || !error.code) {
-    return null;
+async function getDefaultPasswordHash() {
+  if (!state.defaultPasswordHashPromise) {
+    state.defaultPasswordHashPromise = hashString(DEFAULT_PASSWORD);
   }
-  const map = {
-    'auth/user-not-found': 'ID ou senha inválidos.',
-    'auth/wrong-password': 'ID ou senha inválidos.',
-    'auth/invalid-email': 'ID inválido.',
-    'auth/user-disabled': 'Conta desativada. Contate o ADM.',
-    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
-    'auth/requires-recent-login': 'É necessário autenticar novamente.',
-  };
-  return map[error.code] || null;
+  return state.defaultPasswordHashPromise;
+}
+
+function getStoredAuthState() {
+  const raw = localStorage.getItem(LOCAL_STATE_KEY);
+  if (!raw) {
+    return { userStates: {} };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      return { userStates: parsed.userStates || {} };
+    }
+  } catch {
+    // ignore
+  }
+  return { userStates: {} };
+}
+
+function setStoredAuthState(snapshot) {
+  try {
+    const payload = { userStates: snapshot.userStates || {} };
+    localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.error('Falha ao salvar estado local da autenticação', error);
+  }
 }
 
 async function ensureDefinitionsLoaded() {
@@ -67,17 +77,17 @@ async function ensureDefinitionsLoaded() {
       throw new Error('Não foi possível carregar a lista de usuários.');
     }
     const payload = await response.json();
-    const list = Array.isArray(payload?.users) ? payload.users : [];
+    const entries = Array.isArray(payload?.users) ? payload.users : [];
     const map = new Map();
-    list.forEach((entry) => {
-      const normalized = normalizeId(entry.id);
+    entries.forEach((entry) => {
+      const normalized = normalizeId(entry?.id);
       if (!normalized) {
         return;
       }
       map.set(normalized, {
         id: normalized,
-        name: entry.name || normalized,
-        role: entry.role || 'user',
+        name: entry?.name || normalized,
+        role: entry?.role || 'user',
       });
     });
     state.definitions = map;
@@ -89,202 +99,34 @@ async function ensureDefinitionsLoaded() {
   return state.definitionsPromise;
 }
 
-async function fetchProfileFromFirestore(firebaseUser) {
-  if (!FirebaseClient) {
-    throw new Error('Firebase não está disponível.');
-  }
-  const docRef = FirebaseClient.doc(FirebaseClient.db, 'users', firebaseUser.uid);
-  const snapshot = await FirebaseClient.getDoc(docRef);
-  if (!snapshot.exists()) {
-    throw new Error('Perfil de usuário não encontrado no Firestore.');
-  }
-  await ensureDefinitionsLoaded();
-  const data = snapshot.data() || {};
-  const normalizedId = normalizeId(data.id || '');
-  if (!normalizedId) {
-    throw new Error('Dados de autenticação incompletos.');
-  }
-  const definition = state.definitions.get(normalizedId);
-  if (!definition) {
-    throw new Error('ID não autorizado. Contate o ADM.');
-  }
-  return {
-    uid: firebaseUser.uid,
-    id: normalizedId,
-    email: firebaseUser.email || formatEmail(normalizedId),
-    name: data.name || definition.name,
-    role: data.role || definition.role || 'user',
-    mustChangePassword: Boolean(data.mustChangePassword),
-  };
-}
-
-async function hydrateProfile(force = false) {
-  if (state.profile && !force) {
-    return state.profile;
-  }
-  if (!FirebaseClient || !FirebaseClient.auth) {
+function loadSession() {
+  const raw = sessionStorage.getItem(LOCAL_SESSION_KEY);
+  if (!raw) {
     return null;
   }
-  const firebaseUser = FirebaseClient.auth.currentUser;
-  if (!firebaseUser) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function persistSession(profile) {
+  if (!profile) {
+    sessionStorage.removeItem(LOCAL_SESSION_KEY);
     state.profile = null;
-    return null;
-  }
-  if (state.profilePromise && !force) {
-    return state.profilePromise;
-  }
-  state.profilePromise = (async () => {
-    const profile = await fetchProfileFromFirestore(firebaseUser);
-    state.profile = profile;
-    state.profilePromise = null;
-    renderAuthStatus(profile);
-    return profile;
-  })();
-  return state.profilePromise;
-}
-
-async function signIn({ id, password }) {
-  if (!FirebaseClient || !FirebaseClient.auth) {
-    throw new Error('Firebase não inicializado.');
-  }
-  const normalizedId = normalizeId(id);
-  if (!normalizedId) {
-    throw new Error('Informe o ID.');
-  }
-  if (!password) {
-    throw new Error('Informe a senha.');
-  }
-  const definitions = await ensureDefinitionsLoaded();
-  const definition = definitions.get(normalizedId);
-  if (!definition) {
-    throw new Error('ID inválido ou não autorizado.');
+    return;
   }
   try {
-    await FirebaseClient.signInWithEmailAndPassword(
-      FirebaseClient.auth,
-      formatEmail(normalizedId),
-      password
-    );
-    const profile = await hydrateProfile(true);
-    if (!profile) {
-      throw new Error('Não foi possível carregar o perfil.');
-    }
-    return profile;
+    sessionStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(profile));
   } catch (error) {
-    const friendly = translateFirebaseError(error);
-    throw new Error(friendly || 'Falha ao autenticar. Tente novamente.');
+    console.error('Falha ao persistir sessão local', error);
   }
-}
-
-async function changePassword(newPassword) {
-  if (!newPassword) {
-    throw new Error('Informe a nova senha.');
-  }
-  if (!FirebaseClient || !FirebaseClient.auth) {
-    throw new Error('Sessão inválida.');
-  }
-  await state.authReadyPromise;
-  const firebaseUser = FirebaseClient.auth.currentUser;
-  if (!firebaseUser) {
-    throw new Error('Sessão inválida.');
-  }
-  try {
-    await FirebaseClient.updatePassword(firebaseUser, newPassword);
-    const userDocRef = FirebaseClient.doc(FirebaseClient.db, 'users', firebaseUser.uid);
-    await FirebaseClient.updateDoc(userDocRef, {
-      mustChangePassword: false,
-      passwordChangedAt: FirebaseClient.serverTimestamp(),
-    });
-    if (state.profile) {
-      state.profile = { ...state.profile, mustChangePassword: false };
-      renderAuthStatus(state.profile);
-    }
-    return state.profile;
-  } catch (error) {
-    const friendly = translateFirebaseError(error);
-    throw new Error(friendly || 'Falha ao atualizar a senha.');
-  }
-}
-
-async function submitPasswordResetRequest({ id, note }) {
-  if (!id) {
-    throw new Error('Informe o ID.');
-  }
-  if (!FirebaseClient || !FirebaseClient.db) {
-    throw new Error('Firebase não está disponível.');
-  }
-  await ensureDefinitionsLoaded();
-  const normalizedId = normalizeId(id);
-  if (!state.definitions.has(normalizedId)) {
-    throw new Error('ID inválido.');
-  }
-  const payload = {
-    createdAt: FirebaseClient.serverTimestamp(),
-    requestedId: normalizedId,
-    requestedEmail: formatEmail(normalizedId),
-    requestedByUid: state.profile?.uid || null,
-    status: 'pending',
-    adminUid: null,
-    adminAt: null,
-    adminNote: '',
-    note: String(note || '').trim(),
-  };
-  await FirebaseClient.addDoc(
-    FirebaseClient.collection(FirebaseClient.db, 'password_reset_requests'),
-    payload
-  );
-  return true;
-}
-
-async function performSignOut() {
-  if (FirebaseClient && FirebaseClient.auth) {
-    try {
-      await FirebaseClient.signOut(FirebaseClient.auth);
-    } catch (error) {
-      console.error('Erro ao sair', error);
-    }
-  }
-  state.profile = null;
-  renderAuthStatus(null);
-}
-
-async function signOut() {
-  await performSignOut();
-  window.location.href = 'login.html';
-}
-
-async function requireAuthOrRedirect({
-  allowChangePasswordPage = false,
-  loginPath = 'login.html',
-  requiredRole = null,
-} = {}) {
-  try {
-    await state.authReadyPromise;
-    const profile = await hydrateProfile();
-    if (!profile) {
-      window.location.href = loginPath;
-      return null;
-    }
-    if (profile.mustChangePassword && !allowChangePasswordPage) {
-      window.location.href = 'change-password.html';
-      return null;
-    }
-    if (!profile.mustChangePassword && allowChangePasswordPage) {
-      window.location.href = 'index.html';
-      return null;
-    }
-    if (requiredRole && profile.role !== requiredRole) {
-      window.location.href = loginPath;
-      return null;
-    }
-    renderAuthStatus(profile);
-    return profile;
-  } catch (error) {
-    console.error('Falha na verificação de autenticação', error);
-    await performSignOut();
-    window.location.href = loginPath;
-    return null;
-  }
+  state.profile = profile;
 }
 
 function renderAuthStatus(profile) {
@@ -296,7 +138,7 @@ function renderAuthStatus(profile) {
     container.classList.toggle('hidden', !profile);
   }
   if (label) {
-    label.textContent = profile ? 'Logado: ' + profile.name + ' (' + profile.id + ')' : '';
+    label.textContent = profile ? `Logado: ${profile.name} (${profile.id})` : '';
   }
   if (badge) {
     badge.classList.toggle('hidden', !(profile && profile.role === 'admin'));
@@ -310,44 +152,149 @@ function renderAuthStatus(profile) {
   }
 }
 
-async function handleAuthStateChanged(user) {
-  markAuthReady();
-  if (!user) {
-    state.profile = null;
-    renderAuthStatus(null);
-    return;
+async function signIn({ id, password }) {
+  const normalizedId = normalizeId(id);
+  if (!normalizedId) {
+    throw new Error('Informe o ID.');
   }
+  if (!password) {
+    throw new Error('Informe a senha.');
+  }
+  const definitions = await ensureDefinitionsLoaded();
+  const definition = definitions.get(normalizedId);
+  if (!definition) {
+    throw new Error('ID inválido ou não autorizado.');
+  }
+  const stored = getStoredAuthState();
+  const entry = stored.userStates[normalizedId] || {};
+  const requestedHash = await hashString(password);
+  const defaultHash = await getDefaultPasswordHash();
+  const expectedHash = entry.passwordHash || defaultHash;
+  if (requestedHash !== expectedHash) {
+    throw new Error('ID ou senha inválidos.');
+  }
+  const mustChangePassword = Boolean(entry.mustChangePassword ?? (requestedHash === defaultHash));
+  const profile = {
+    id: normalizedId,
+    name: definition.name,
+    role: definition.role || 'user',
+    mustChangePassword,
+  };
+  stored.userStates[normalizedId] = {
+    ...entry,
+    mustChangePassword,
+  };
+  setStoredAuthState(stored);
+  persistSession(profile);
+  renderAuthStatus(profile);
+  return profile;
+}
+
+async function changePassword(newPassword) {
+  if (!newPassword) {
+    throw new Error('Informe a nova senha.');
+  }
+  const session = loadSession();
+  if (!session) {
+    throw new Error('Sessão inválida.');
+  }
+  const normalizedId = normalizeId(session.id);
+  if (!normalizedId) {
+    throw new Error('Sessão inválida.');
+  }
+  const hashedPassword = await hashString(newPassword);
+  const stored = getStoredAuthState();
+  stored.userStates[normalizedId] = {
+    ...(stored.userStates[normalizedId] || {}),
+    passwordHash: hashedPassword,
+    mustChangePassword: false,
+    updatedAt: new Date().toISOString(),
+  };
+  setStoredAuthState(stored);
+  const updatedProfile = {
+    ...session,
+    mustChangePassword: false,
+  };
+  persistSession(updatedProfile);
+  renderAuthStatus(updatedProfile);
+  return updatedProfile;
+}
+
+async function submitPasswordResetRequest() {
+  throw new Error('Solicitação de reset indisponível no modo local.');
+}
+
+function performSignOut() {
+  persistSession(null);
+  renderAuthStatus(null);
+}
+
+async function signOut() {
+  performSignOut();
+  window.location.href = 'login.html';
+}
+
+async function requireAuthOrRedirect({ allowChangePasswordPage = false, loginPath = 'login.html', requiredRole = null } = {}) {
   try {
-    await ensureDefinitionsLoaded();
-    const profile = await fetchProfileFromFirestore(user);
+    const definitions = await ensureDefinitionsLoaded();
+    const session = loadSession();
+    if (!session) {
+      window.location.href = loginPath;
+      return null;
+    }
+    const normalizedId = normalizeId(session.id);
+    if (!normalizedId || !definitions.has(normalizedId)) {
+      performSignOut();
+      window.location.href = loginPath;
+      return null;
+    }
+    const definition = definitions.get(normalizedId);
+    const role = session.role || definition.role || 'user';
+    const mustChangePassword = Boolean(session.mustChangePassword ?? true);
+    if (mustChangePassword && !allowChangePasswordPage) {
+      window.location.href = 'change-password.html';
+      return null;
+    }
+    if (!mustChangePassword && allowChangePasswordPage) {
+      window.location.href = 'index.html';
+      return null;
+    }
+    if (requiredRole && role !== requiredRole) {
+      window.location.href = loginPath;
+      return null;
+    }
+    const profile = {
+      id: normalizedId,
+      name: definition.name,
+      role,
+      mustChangePassword,
+    };
+    persistSession(profile);
     state.profile = profile;
     renderAuthStatus(profile);
+    return profile;
   } catch (error) {
-    console.error('Falha ao sincronizar usuário', error);
-    await performSignOut();
+    console.error('Falha na verificação de autenticação local', error);
+    performSignOut();
+    window.location.href = loginPath;
+    return null;
   }
 }
-
-if (FirebaseClient && FirebaseClient.auth && FirebaseClient.onAuthStateChanged) {
-  FirebaseClient.onAuthStateChanged(FirebaseClient.auth, handleAuthStateChanged);
-} else {
-  markAuthReady();
-}
-
-ensureDefinitionsLoaded().catch(() => {});
 
 window.signIn = signIn;
 window.changePassword = changePassword;
 window.submitPasswordResetRequest = submitPasswordResetRequest;
 window.requireAuthOrRedirect = requireAuthOrRedirect;
-window.getSessionUser = () => state.profile;
 window.signOut = signOut;
 window.waitForAllowedUsers = ensureDefinitionsLoaded;
 window.authReady = state.authReadyPromise;
 window.DEFAULT_PASSWORD = DEFAULT_PASSWORD;
+window.getSessionUser = () => state.profile || loadSession();
+
+ensureDefinitionsLoaded().catch(() => {});
 
 window.addEventListener('load', () => {
-  const localChangeNotice = 'Alteração salva localmente ✅ — a base oficial será carregada toda sexta-feira.';
+  const localChangeNotice = 'Alteração salva localmente ? — a base oficial será carregada toda sexta-feira.';
   if (typeof window.notifyLocalSave === 'function') {
     window.notifyLocalSave = () => window.showSnackbar?.(localChangeNotice);
   }

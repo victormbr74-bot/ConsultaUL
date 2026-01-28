@@ -1,0 +1,9 @@
+﻿{
+  "functions": {
+    "source": "functions",
+    "runtime": "node18"
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
