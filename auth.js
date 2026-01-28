@@ -36,7 +36,7 @@ function normalizeId(value) {
 }
 
 function formatEmail(id) {
-  return ${id}@;
+  return `${id}@${EMAIL_DOMAIN}`;
 }
 
 function translateFirebaseError(error) {
